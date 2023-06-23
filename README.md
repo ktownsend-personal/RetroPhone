@@ -1,7 +1,6 @@
 # RetroPhone
->*Work-in-progress*
 
----
+>*Work-in-progress*
 
 Free for anyone to copy from. I live by the motto "inspire, not require" as much as I can.
 
