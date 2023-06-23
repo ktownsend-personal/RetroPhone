@@ -31,7 +31,8 @@ This hobby project is to make a few old phones interactive for my retro room so 
 
 ## Software
 * this repository
-* https://github.com/Adrianotiger/phoneDTMF
+* [VisualStudio Code](https://code.visualstudio.com/) with [PlatformIO extension](https://platformio.org/?utm_source=platformio&utm_medium=piohome) using Arduino libraries in C++
+* [DTMF software decoder](https://github.com/Adrianotiger/phoneDTMF)
 
 ## Call Progress Modes
 I made this chart to help me track what transitional modes I should implement and what is active during each mode. Work in progress and likely to change as I get deeper into it and discover my assumptions weren't correct.
