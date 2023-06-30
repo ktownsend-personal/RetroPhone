@@ -12,11 +12,11 @@
 #define CH_FR 0
 #define PIN_AUDIO_OUT 14  //TODO: move our output to a DAC pin and put SLIC output (our input) on 14 for DTMF decoding in software with PhoneDTMF
 #define CH_AUDIO_OUT 1
+#define RING_FREQ 20
 
-const int ringFreq = 20;
-ringHandler ringer = ringHandler(PIN_RM, PIN_FR, CH_FR, ringFreq);
-toneHandler toner = toneHandler(PIN_AUDIO_OUT, CH_AUDIO_OUT);
-//TODO:  PhoneDTMF dtmf = PhoneDTMF();
+auto ringer = ringHandler(PIN_RM, PIN_FR, CH_FR, RING_FREQ);
+auto toner = toneHandler(PIN_AUDIO_OUT, CH_AUDIO_OUT);
+//TODO:  auto dtmf = PhoneDTMF();
 
 void setup() {
   pinMode(PIN_LED, OUTPUT);
@@ -35,6 +35,7 @@ void loop() {
   if(newmode != mode) modeGo(newmode);  // switch to new mode
 }
 
+//TODO: move this to a class; can we do "any" type arg in C++ like we can in golang? Look at template/auto
 bool modeBouncing(modes newmode) {
   // kill ringer faster by skipping debounce when going off-hook; debounce continues fine after mode change
   if(mode == call_incoming && newmode == call_connected) return false;
@@ -143,16 +144,19 @@ void modeGo(modes newmode){
   mode = newmode;
 }
 
+//TODO: move timeout to a class
+
 void timeoutStart(){
   timeoutStarted = millis();
 }
 
 void timeoutCheck(){
   unsigned int since = (millis() - timeoutStarted);
-  if(since > abandonMax && mode == call_timeout) return modeGo(call_abandoned);
+  if(since > abandonMax && mode == call_timeout) return modeGo(call_abandoned); // check longer max first
   if(since > timeoutMax && mode != call_timeout) return modeGo(call_timeout);
 }
 
+// callback from ringer class so we can show ring counts in the serial output
 void showRingCount(int rings){
   Serial.printf("%d.", rings);
 }
@@ -162,4 +166,11 @@ void dialingCheck(modes mode){
   //TODO: monitor only detected dialing type and track values in dialing mode
   //TODO: this could probably be done as a class to encapsulate it
   //TODO: resest timeout check when we detect each digit
+
+  /*
+    - count pulses during debounce: lastSHK, pulseCount, pulseGapMin, pulseGapMax (min to ignore spurious, max to detect gaps between numbers)
+    - capture digit and reset pulseCount if gap > max: digitAccumulator, digitCount (length of digitAccumulator, but incremented manually so we can avoid sizeof function on string, if that matters...might be fine to use sizeof)
+
+    - after doing this in the loop, try doing it with interrupt and see how that goes (especially if interrupt works well for reducing ringing overlap in handset)
+  */
 }

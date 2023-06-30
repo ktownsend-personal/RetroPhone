@@ -22,6 +22,7 @@ This hobby project is to make a few old phones interactive for my retro room so 
 * special mode for my old candlestick phone to simulate just picking it up and talking to an operator, possibly with toggling the hook to attract the operator and using a voice assistant to respond to spoken commands
   * if I get that voice assistant idea working, can also use it to respond to dialing zero to get an operator
 * status web page, possibly with configurable options
+  * could have it run just when on-hook, or maybe only if a special maintenance number is dialed and terminate when phone is hung up again
 
 ## Inspiration
 * [Telephone Central Office Simulator](https://youtu.be/qM0ZhSyA6Jw) (video) and [related GitHub repo](https://github.com/GadgetReboot/misc_file_bin/tree/master/2022_11/Telephone_Central_Office_wip) from GadgetReboot
@@ -39,6 +40,7 @@ This hobby project is to make a few old phones interactive for my retro room so 
   * question: is the SLIC slow to detect off-hook, or is ESP32 slow to react? 
   * other things to try :
     * see if it helps to turn ringer pins off directly at top of loop instead of using ringer.stop() in case class indirection is adding enough overhead to cause some delay
+    * see if an interrupt works even better than top-of-loop above
     * try hardware: and-gate with inverted hook input anded with the ringer output signals
 * The SLIC's audio output pin has the physical ringing signal while ringing, likely requiring an isolation mechanism (relay, solid-state relay, other options?)
   * if the actual ring voltage is present on the SLIC audio out pin we will need to protect the ESP32 with some form of isolation while ringing
@@ -50,16 +52,18 @@ This hobby project is to make a few old phones interactive for my retro room so 
 * I wonder if the whole state machine could be based on interrupts and avoid having a loop entirely?
 * should probalby have special response for 911 dialing to clearly say it's not a real phone and cannot be used for emergencies
 
+## Tidbits
+* `while (!Serial){}` to wait for serial connection (example was right after Serial.begin() in setup())
+* `for (const auto &line : magicLines){}` enumerate an array of structs [ref](https://luckyresistor.me/2019/07/12/write-less-code-using-the-auto-keyword/)
+
 ## Next Steps
 * pulse dialing, decoded in software
-  * count pulses during debounce: lastSHK, pulseCount, pulseGapMin, pulseGapMax (min to ignore spurious, max to detect gaps between numbers)
-  * capture digit and reset pulseCount if gap > max: digitAccumulator, digitCount (length of digitAccumulator, but incremented manually so we can avoid sizeof function on string, if that matters...might be fine to use sizeof)
 * DTMF dialing, decoded in software
 * RGB LED for status colors & patterns representing all of the call states
 * multi-freq call progress tones on DAC pin
-  * question: are these playing async so the loop can still do stuff?
+  * *question: are these playing async so the loop can still do stuff?*
 * call progress recorded messages
-  * question: are these playing async so the loop can still do stuff?
+  * *question: are these playing async so the loop can still do stuff?*
 * trunk line via wifi, or wired if wifi affects audio quality
   * could switch to PiZero or something if ESP32 not up to the task with wifi
 
