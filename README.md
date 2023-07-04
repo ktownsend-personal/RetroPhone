@@ -37,15 +37,17 @@ This hobby project is to make a few old phones interactive for my retro room so 
 ## Challenges
 * Timing of stopping the ringer when handset taken off-hook is difficult to get "immediate", so there is a brief amount of clicking on the handset when first picked up. 
   * I was able to tweak my debounce logic to skip the debounce period when specifically transitioning from incoming to connected (triggered by going off-hook), which has it down to about 100 milliseconds.
-  * question: is the SLIC slow to detect off-hook, or is ESP32 slow to react? 
-  * other things to try :
-    * see if it helps to turn ringer pins off directly at top of loop instead of using ringer.stop() in case class indirection is adding enough overhead to cause some delay
-    * see if an interrupt works even better than top-of-loop above
-    * try hardware: and-gate with inverted hook input anded with the ringer output signals
+    * I tried a few other things in code, like pin-interrupt and trying to detect off-hook state at top of loop, but nothing worked. I think we have effectively eliminated all of the ESP32 delay.
+    * Another option might be using hardware and-gate with inverted hook input anded with the ringer output signals, but if the delay is within the SLIC then this won't matter.
+  * It seems like the SLIC takes a moment to detect off-hook when the RM pin is high, possibly related to the higher voltage while ringing. I noticed if I leave RM low while ringing the overlap disappears, however we need the RM pin high to actuate a physical bell. 
+  * This overlap might be normal, even with a real phone system...just rare for anyone to notice because they don't usually have the earpiece to their ear already when going off-hook. If I find a phone on a real phone system I may try to check this.
 * The SLIC's audio output pin has the physical ringing signal while ringing, likely requiring an isolation mechanism (relay, solid-state relay, other options?)
   * if the actual ring voltage is present on the SLIC audio out pin we will need to protect the ESP32 with some form of isolation while ringing
   * if we decide to use physical wire for the trunk line we will need to disconnect the SLIC audio out from it while dialing
   * if we decide to use DTMF signaling over the trunk audio line before connecting the call we will have to use a switching mechanism to isolate the trunk line and shift the ESP32 audio out pin to the trunk or use a different DAC pin for it
+
+## Notable
+* RM and FR pins on the SLIC are both necessary for rining. The RM pin sets the higher ringing voltage, and the FR pin flip flops the polarity on high and low cycles. Both are definitely needed, although the electronic ringer on my Sony slimline works fine with just FR toggled, the physical bell on the Snoopy phone requires the RM to have enough power to physically move the armature. The FR pin should be toggled at 50% duty cycle at 20Hz with cadence 2s-on/4s-off for US ring.
 
 ## Thoughts
 * would interrupts be useful in this project so we can put the device to sleep when idle, but still wake up for incoming wifi call or off-hook pin?
@@ -54,7 +56,7 @@ This hobby project is to make a few old phones interactive for my retro room so 
 
 ## Tidbits
 * `while (!Serial){}` to wait for serial connection (example was right after Serial.begin() in setup())
-* `for (const auto &line : magicLines){}` enumerate an array of structs [ref](https://luckyresistor.me/2019/07/12/write-less-code-using-the-auto-keyword/)
+* `for (const auto &line : lines){}` enumerate an array of structs [ref](https://luckyresistor.me/2019/07/12/write-less-code-using-the-auto-keyword/)
 
 ## Next Steps
 * pulse dialing, decoded in software

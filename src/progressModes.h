@@ -49,7 +49,7 @@ void modeRun(modes);
 void modeGo(modes);
 void timeoutStart();
 void timeoutCheck();
-void showRingCount(int);
-void dialingCheck(modes mode);
-
+void ringCountCallback(int);
+void dialingStartedCallback();
+void digitReceivedCallback(char);
 #endif

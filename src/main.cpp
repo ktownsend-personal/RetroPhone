@@ -2,6 +2,7 @@
 #include <progressModes.h>
 #include <toneHandler.h>
 #include <ringHandler.h>
+#include <hookHandler.h>
 // #include <PhoneDTMF.h>
 
 #define PIN_LED 2
@@ -16,6 +17,7 @@
 
 auto ringer = ringHandler(PIN_RM, PIN_FR, CH_FR, RING_FREQ);
 auto toner = toneHandler(PIN_AUDIO_OUT, CH_AUDIO_OUT);
+auto hooker = hookHandler(PIN_SHK, dialingStartedCallback);
 //TODO:  auto dtmf = PhoneDTMF();
 
 void setup() {
@@ -24,7 +26,8 @@ void setup() {
   pinMode(PIN_SHK, INPUT_PULLDOWN);
   pinMode(PIN_RM, OUTPUT);
   Serial.begin(115200);
-  ringer.setCounterCallback(showRingCount);
+  ringer.setCounterCallback(ringCountCallback);
+  hooker.setDigitCallback(digitReceivedCallback);
   //TODO: dtmf.begin(TODO: ADC PIN); // use pin 14 for this after I move the SLIC input to a DAC pin and connect SLIC output to 14
 }
 
@@ -43,7 +46,7 @@ bool modeBouncing(modes newmode) {
   if(newmode != lastDebounceValue){
     lastDebounceTime = millis();
     lastDebounceValue = newmode;
-    Serial.print(","); // visual cue each time value bounces
+    // Serial.print(","); // visual cue each time value bounces
     return true;
   }
   // true = bouncing, false = stable
@@ -63,10 +66,7 @@ modes modeDetect() {
       if(SHK) return call_connected;
       if(!BTN) return call_idle;
       break;
-    case call_ready:
-    case call_connected:
-    case call_timeout:
-    case call_abandoned:
+    default:
       if(!SHK) return call_idle;
       break;
   }
@@ -74,12 +74,8 @@ modes modeDetect() {
 }
 
 void modeStop(modes oldmode) {
-  Serial.printf("not %s\n", modeNames[oldmode]);
+  Serial.printf("...stop %s\n", modeNames[oldmode]);
   switch(oldmode){
-    case call_idle:
-    case call_connected:
-    case call_abandoned:
-      break;
     case call_incoming:
       ringer.stop();
       break;
@@ -98,16 +94,13 @@ void modeStart(modes newmode) {
   digitalWrite(PIN_LED, digitalRead(PIN_SHK)); // basic off-hook status; might change to different cue patterns for different modes unless I devote more output pins for different signal LED's
 
   switch(newmode){
-    case call_idle:
-    case call_connected:
-    case call_abandoned:
-      break;
     case call_incoming:
       ringer.start();
       break;
     case call_ready:
       toner.play(toner.dialtone);
       timeoutStart();
+      hooker.start();
       break;
     case call_dialing:
       timeoutStart();
@@ -124,11 +117,11 @@ void modeRun(modes mode){
       ringer.run();
       break;
     case call_ready:
-      dialingCheck(mode);
+      hooker.run();
       timeoutCheck();
       break;
     case call_dialing:
-      dialingCheck(mode);
+      hooker.run();
       timeoutCheck();
       break;
     case call_timeout:
@@ -157,20 +150,27 @@ void timeoutCheck(){
 }
 
 // callback from ringer class so we can show ring counts in the serial output
-void showRingCount(int rings){
+void ringCountCallback(int rings){
   Serial.printf("%d.", rings);
 }
 
-void dialingCheck(modes mode){
-  //TODO: detect start and type of dialing in ready mode
-  //TODO: monitor only detected dialing type and track values in dialing mode
-  //TODO: this could probably be done as a class to encapsulate it
-  //TODO: resest timeout check when we detect each digit
+//-------------- dialing stuff ---------------------//
 
-  /*
-    - count pulses during debounce: lastSHK, pulseCount, pulseGapMin, pulseGapMax (min to ignore spurious, max to detect gaps between numbers)
-    - capture digit and reset pulseCount if gap > max: digitAccumulator, digitCount (length of digitAccumulator, but incremented manually so we can avoid sizeof function on string, if that matters...might be fine to use sizeof)
+String digits;
 
-    - after doing this in the loop, try doing it with interrupt and see how that goes (especially if interrupt works well for reducing ringing overlap in handset)
-  */
+void dialingStartedCallback(){
+  digits = "";
+  modeGo(call_dialing);
+}
+
+// we can use this as callback for both pulse and tone dialing handlers
+void digitReceivedCallback(char digit){
+  timeoutStart(); // reset timeout after user input
+  Serial.print(digit); // debug output show digits as they are received
+  //TODO: accumulate digits and decide when appropriate to "connect" (i.e., another node, simulation or special behavior [config website?])
+  digits += digit;
+  if(digits.length() > 3){ // fake decision to connect
+    modeGo(call_connecting);
+    Serial.print(digits);
+  }
 }
