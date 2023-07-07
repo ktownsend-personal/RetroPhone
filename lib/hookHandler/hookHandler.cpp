@@ -10,6 +10,7 @@ void hookHandler::setDigitCallback(void (*callback)(char)) {
 }
 
 void hookHandler::start(){
+  dialingStarting = false;
   pulseInProgress = false;
   pulseTime = 0;
   pulseCount = 0;
@@ -27,10 +28,10 @@ void hookHandler::run(){
     return;
   }
   if(newSHK == SHK) return; // abort if unchanged 
-  SHK = newSHK; // track change
+  SHK = newSHK;             // track change
   if(SHK == LOW) {
-    // callback when dialing starts the very first time
-    if(pulseTime == 0) dialingStartedCallback();
+    // possible dialing start, but could be just hanging up so defer callback until SHK goes high again
+    if(pulseTime == 0) dialingStarting = true; 
     // on low state start tracking pulse time
     pulseTime = millis();
     pulseInProgress = true;
@@ -40,5 +41,10 @@ void hookHandler::run(){
     // accumulate pulse count
     pulseCount++;
     pulseInProgress = false;
+    // notify when dialing started so controller can change mode
+    if(dialingStarting){
+      dialingStarting = false;
+      dialingStartedCallback();
+    }
   }
 }

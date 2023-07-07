@@ -5,7 +5,7 @@
 
 class hookHandler {
   public:
-    hookHandler(unsigned, void (*callback)());
+    hookHandler(unsigned pinSHK, void (*callback)());
     void setDigitCallback(void (*callback)(char));
     void start();
     void run();
@@ -13,6 +13,7 @@ class hookHandler {
   private:
     unsigned PIN_SHK;
     bool SHK;
+    bool dialingStarting;
     bool pulseInProgress;
     unsigned long pulseTime;
     const unsigned pulseGapMin = 10;

@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <progressModes.h>
-#include <toneHandler.h>
 #include <ringHandler.h>
 #include <hookHandler.h>
+#include <mozziHandler.h>
 // #include <PhoneDTMF.h>
 
 #define PIN_LED 2
@@ -11,29 +11,27 @@
 #define PIN_RM 32
 #define PIN_FR 33
 #define CH_FR 0
-#define PIN_AUDIO_OUT 14  //TODO: move our output to a DAC pin and put SLIC output (our input) on 14 for DTMF decoding in software with PhoneDTMF
-#define CH_AUDIO_OUT 1
 #define RING_FREQ 20
 
 auto ringer = ringHandler(PIN_RM, PIN_FR, CH_FR, RING_FREQ);
-auto toner = toneHandler(PIN_AUDIO_OUT, CH_AUDIO_OUT);
 auto hooker = hookHandler(PIN_SHK, dialingStartedCallback);
+auto mozzi = mozziHandler(region_unitedKingdom);
 //TODO:  auto dtmf = PhoneDTMF();
 
 void setup() {
   pinMode(PIN_LED, OUTPUT);
   pinMode(PIN_BTN, INPUT_PULLDOWN);
-  pinMode(PIN_SHK, INPUT_PULLDOWN);
+  pinMode(PIN_SHK, INPUT_PULLUP);
   pinMode(PIN_RM, OUTPUT);
   Serial.begin(115200);
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
-  //TODO: dtmf.begin(TODO: ADC PIN); // use pin 14 for this after I move the SLIC input to a DAC pin and connect SLIC output to 14
+  //TODO: dtmf.begin(TODO: ADC PIN); // use pin 14 for this (probably)
 }
 
 void loop() {
+  modeRun(mode);                        // always run the current mode before modeDetect() because mode can change during modeRun()
   modes newmode = modeDetect();         // check inputs for new mode
-  modeRun(mode);                        // always run the current mode first
   if(modeBouncing(newmode)) return;     // wait for bounce to settle
   if(newmode != mode) modeGo(newmode);  // switch to new mode
 }
@@ -46,7 +44,6 @@ bool modeBouncing(modes newmode) {
   if(newmode != lastDebounceValue){
     lastDebounceTime = millis();
     lastDebounceValue = newmode;
-    // Serial.print(","); // visual cue each time value bounces
     return true;
   }
   // true = bouncing, false = stable
@@ -61,29 +58,26 @@ modes modeDetect() {
     case call_idle:
       if(SHK) return call_ready;
       if(BTN) return call_incoming;
-      break;
     case call_incoming:
       if(SHK) return call_connected;
       if(!BTN) return call_idle;
-      break;
     default:
       if(!SHK) return call_idle;
-      break;
   }
   return mode; // if we get here the mode didn't change
 }
 
 void modeStop(modes oldmode) {
-  Serial.printf("...stop %s\n", modeNames[oldmode]);
+  //Serial.printf("...stop %s\n", modeNames[oldmode]);
+  Serial.println(" /");
   switch(oldmode){
     case call_incoming:
       ringer.stop();
       break;
     case call_ready:
-      toner.play(toner.silent);
-      break;
     case call_timeout:
-      toner.play(toner.silent);
+    case call_abandoned:
+      mozzi.play(mozzi.silent);
       break;
   }
 }
@@ -98,7 +92,7 @@ void modeStart(modes newmode) {
       ringer.start();
       break;
     case call_ready:
-      toner.play(toner.dialtone);
+      mozzi.play(mozzi.dialtone);
       timeoutStart();
       hooker.start();
       break;
@@ -106,7 +100,10 @@ void modeStart(modes newmode) {
       timeoutStart();
       break;
     case call_timeout:
-      toner.play(toner.howler);
+      mozzi.play(mozzi.howler);
+      break;
+    case call_abandoned:
+      mozzi.play(mozzi.dialAgain);  //TODO: this should really be when dialing first times out, played twice then play mozzi.offHookToneStart(); call_abandoned should be silence
       break;
   }
 }
@@ -117,9 +114,6 @@ void modeRun(modes mode){
       ringer.run();
       break;
     case call_ready:
-      hooker.run();
-      timeoutCheck();
-      break;
     case call_dialing:
       hooker.run();
       timeoutCheck();
@@ -128,7 +122,7 @@ void modeRun(modes mode){
       timeoutCheck();
       break;
   }
-  toner.run();
+  mozzi.run(); //TODO: should this be done conditionally when we know audio should be playing?
 }
 
 void modeGo(modes newmode){
@@ -137,7 +131,7 @@ void modeGo(modes newmode){
   mode = newmode;
 }
 
-//TODO: move timeout to a class
+//TODO: move timeout to a class?
 
 void timeoutStart(){
   timeoutStarted = millis();
@@ -165,11 +159,12 @@ void dialingStartedCallback(){
 
 // we can use this as callback for both pulse and tone dialing handlers
 void digitReceivedCallback(char digit){
-  timeoutStart(); // reset timeout after user input
-  Serial.print(digit); // debug output show digits as they are received
-  //TODO: accumulate digits and decide when appropriate to "connect" (i.e., another node, simulation or special behavior [config website?])
-  digits += digit;
-  if(digits.length() > 3){ // fake decision to connect
+  timeoutStart();           // reset timeout after user input
+  Serial.print(digit);      // debug output show digits as they are received
+  digits += digit;          // accumulate the digit
+
+  //TODO: decide when appropriate to "connect" (i.e., another node, simulation or special behavior [config website?])
+  if(digits.length() > 3){  // fake decision to connect
     modeGo(call_connecting);
     Serial.print(digits);
   }

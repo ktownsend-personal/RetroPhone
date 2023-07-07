@@ -38,8 +38,8 @@ modes lastDebounceValue = call_idle;
 unsigned long lastDebounceTime = 0;
 const unsigned long debounceDelay = 80; // 80ms minimum to ignore pulse dialing on snoopy phone, but 70ms ok for my sony phone
 unsigned long timeoutStarted = 0;
-const unsigned long timeoutMax = 1000 * 60;
-const unsigned long abandonMax = 1000 * 120;  // based on same timeoutStarted origin as timeoutMax, so ensure higher than timeoutMax 
+const unsigned long timeoutMax = 1000 * 10;
+const unsigned long abandonMax = 1000 * 20;  // based on same timeoutStarted origin as timeoutMax, so ensure higher than timeoutMax 
 
 modes modeDetect();
 bool modeBouncing(modes);

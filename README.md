@@ -10,10 +10,10 @@ This hobby project is to make a few old phones interactive for my retro room so 
 * Dial a few phone numbers and get a simulated response from the "other end"
 * Call one of the other phones on display and talk to whoever answers
 * Accurately replicate a real phone experience
-  * physical ringing
-  * authentic call progress tones and messages
-  * touch-tone dialing (DTMF)
-  * pulse dialing (rotary dialing)
+  * [x] physical ringing
+  * [x] authentic call progress tones and messages
+  * [ ] touch-tone dialing (DTMF)
+  * [x] pulse dialing (rotary dialing)
 
 ## Optional Goals
 * wifi for signaling and comms between phones if ESP32 can handle DAC/ADC simultaneously without noticeable audio problems
@@ -31,8 +31,18 @@ This hobby project is to make a few old phones interactive for my retro room so 
 * button to ESP32 triggers incoming call (physical ringing) with accurate 20Hz ring frequency and 2s-on/4s-off cadence to the SLIC, which rings the phone physically
 * stable call progress mode transitions with debounce (hook signal bounces a lot)
   * debounce timing tuned to avoid transitions while pulse-dialing
-* fake call progress tones with optional on/off cadence timing 
-  * single-freq on PWM pin for now until I implement multi-freq on DAC pin
+* real multi-freq progress tones using Mozzi library, using excellent work done by GadgetReboot as a starting point
+  * can also play a recorded message (one was included in the code from GadgetReboot)
+* pulse dialing detection is working
+
+## Next Steps
+* DTMF dialing, decoded in software
+* RGB LED for status colors & patterns representing all of the call states
+* call progress recorded messages
+  * need more recordings
+  * need a way to sequence a specified number of repeats with delay between, possibly followed by progress tone (i.e., dial again and howler, although could split timeout into two modes)
+* trunk line via wifi, or wired if wifi affects audio quality
+  * could switch to PiZero or something if ESP32 not up to the task with wifi
 
 ## Challenges
 * Timing of stopping the ringer when handset taken off-hook is difficult to get "immediate", so there is a brief amount of clicking on the handset when first picked up. 
@@ -42,7 +52,7 @@ This hobby project is to make a few old phones interactive for my retro room so 
   * It seems like the SLIC takes a moment to detect off-hook when the RM pin is high, possibly related to the higher voltage while ringing. I noticed if I leave RM low while ringing the overlap disappears, however we need the RM pin high to actuate a physical bell. 
   * This overlap might be normal, even with a real phone system...just rare for anyone to notice because they don't usually have the earpiece to their ear already when going off-hook. If I find a phone on a real phone system I may try to check this.
 * The SLIC's audio output pin has the physical ringing signal while ringing, likely requiring an isolation mechanism (relay, solid-state relay, other options?)
-  * if the actual ring voltage is present on the SLIC audio out pin we will need to protect the ESP32 with some form of isolation while ringing
+  * `not an issue` ~~if the actual ring voltage is present on the SLIC audio out pin we will need to protect the ESP32 with some form of isolation while ringing~~
   * if we decide to use physical wire for the trunk line we will need to disconnect the SLIC audio out from it while dialing
   * if we decide to use DTMF signaling over the trunk audio line before connecting the call we will have to use a switching mechanism to isolate the trunk line and shift the ESP32 audio out pin to the trunk or use a different DAC pin for it
 
@@ -56,18 +66,10 @@ This hobby project is to make a few old phones interactive for my retro room so 
 
 ## Tidbits
 * `while (!Serial){}` to wait for serial connection (example was right after Serial.begin() in setup())
-* `for (const auto &line : lines){}` enumerate an array of structs [ref](https://luckyresistor.me/2019/07/12/write-less-code-using-the-auto-keyword/)
-
-## Next Steps
-* pulse dialing, decoded in software
-* DTMF dialing, decoded in software
-* RGB LED for status colors & patterns representing all of the call states
-* multi-freq call progress tones on DAC pin
-  * *question: are these playing async so the loop can still do stuff?*
-* call progress recorded messages
-  * *question: are these playing async so the loop can still do stuff?*
-* trunk line via wifi, or wired if wifi affects audio quality
-  * could switch to PiZero or something if ESP32 not up to the task with wifi
+* `for (const auto &line : lines){}` enumerate a local array (not pointer to array) [ref](https://luckyresistor.me/2019/07/12/write-less-code-using-the-auto-keyword/)
+* `Serial.printf("..%s..", stringvar.c_str())` to print `String` type with printf because `%s` epxects C style string not `String` object and will garble the value or even crash the app
+* passing arrays to functions, [good explanation](https://stackoverflow.com/a/19894884/8228356)
+  in a nutshell, arg is simple pointer and you pass array directly when calling, but really a pointer to first array value is passed and in the func you can access array values by index like normal...but you can't know the length and must pass that value separately
 
 ## Hardware
 * [KS0835F SLIC module](https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqbEtxcHQ2MnVEQ3c2ZXVjNHRtZW82Tk1JSS1UUXxBQ3Jtc0ttV0g1ZlFleXBXV0JRbVJTbldEbW12X2JVQ0ZJcEJ0NG44ck94cUtmeEowY2xuNi1QSEQwbzFzYmo1cDdGLTFWNHR4QmpVbS0yNlRvdWFYeEN4b3JUcnFYZnN3SWkwUGRmSmI4UDNFSDE3R1Rlb0Iycw&q=https%3A%2F%2Fs.click.aliexpress.com%2Fe%2F_DFeMKoP&v=qM0ZhSyA6Jw) (AG1171/AG1170 clone)
