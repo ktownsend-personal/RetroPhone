@@ -45,7 +45,6 @@ AudioOutput_t updateAudio() {
   if (tone_cadence_on) {
     // create an audio signal by summing 4 oscillators and scaling the resulting signal to fit into an 8 bit format
     return MonoOutput::from8Bit(((tone1.next() + tone2.next() + tone3.next() + tone4.next()) >> 3) * tone_gain);
-    //TODO: >>3 gives a nice audio level in general, but howler probably should be >>2 for higher volume; >>1 causes howler to distort badly.
   }
 
   if (sample_playing) {
