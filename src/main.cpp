@@ -119,10 +119,10 @@ void modeStart(modes newmode) {
       mozzi.play(mozzi.howler);
       break;
     case call_abandoned:
-      mozzi.play(mozzi.dialAgain);  //TODO: this should really be when dialing first times out, played twice then play mozzi.offHookToneStart(); call_abandoned should be silence
+      mozzi.play(mozzi.dialAgain);  //TODO: this should really be when dialing times out (played twice then play mozzi.howler) disconnected timeout should skip and just do howler; call_abandoned should be silence
       break;
     case call_connecting:
-      //TODO: this is just simulating ring or busy based on first digit of dialed number (even=ring); implement call negotiation later
+      //TODO: implement real connection negotiation; this fake simulation rings if first digit even, or busy if odd
       if((digits[0] - '0') % 2== 0)
         modeGo(call_ringing);
       else
