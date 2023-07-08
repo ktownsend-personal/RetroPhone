@@ -3,10 +3,8 @@
 #include <ringHandler.h>
 #include <hookHandler.h>
 #include <mozziHandler.h>
-// #include <PhoneDTMF.h>
 
 #define PIN_LED 2
-// #define PIN_DTMF 14
 #define PIN_BTN 12
 #define PIN_SHK 13
 #define PIN_RM 32
@@ -14,23 +12,31 @@
 #define CH_FR 0
 #define RING_FREQ 20
 
+#define ENABLE_DTMF false // DTMF and Mozzi don't play nice together, so I want to control them easily
+#if ENABLE_DTMF
+  #include <PhoneDTMF.h>
+  #define PIN_DTMF 14
+  auto dtmf = PhoneDTMF(300); // 70 seems to work well
+#endif
 
 String digits; // this is where we accumulate dialed digits
 auto ringer = ringHandler(PIN_RM, PIN_FR, CH_FR, RING_FREQ);
 auto hooker = hookHandler(PIN_SHK, dialingStartedCallback);
 auto mozzi = mozziHandler(region_northAmerica);
-// auto dtmf = PhoneDTMF(300);
 
 void setup() {
   pinMode(PIN_LED, OUTPUT);
   pinMode(PIN_BTN, INPUT_PULLDOWN);
   pinMode(PIN_SHK, INPUT_PULLUP);
   pinMode(PIN_RM, OUTPUT);
-  // pinMode(PIN_DTMF, INPUT);
   Serial.begin(115200);
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
-  // dtmf.begin(PIN_DTMF, 6000);
+
+  #if ENABLE_DTMF
+    pinMode(PIN_DTMF, INPUT);
+    dtmf.begin(PIN_DTMF, 4000); // 4000 seems to work well once dialtone stops
+  #endif
 }
 
 void loop() {
@@ -58,6 +64,7 @@ modes modeDetect() {
   int SHK = digitalRead(PIN_SHK);
   int BTN = digitalRead(PIN_BTN);
 
+  //NOTE: every case must have a break to prevent fallthrough if return conditions not met
   switch(mode) {
     case call_idle:
       if(SHK) return call_ready;
@@ -75,7 +82,6 @@ modes modeDetect() {
 }
 
 void modeStop(modes oldmode) {
-  //Serial.printf("...stop %s\n", modeNames[oldmode]);
   Serial.println(" /");
   switch(oldmode){
     case call_incoming:
@@ -90,14 +96,16 @@ void modeStop(modes oldmode) {
 void modeStart(modes newmode) {
   Serial.printf("%s...", modeNames[newmode]);
 
-  digitalWrite(PIN_LED, digitalRead(PIN_SHK)); // basic off-hook status; might change to different cue patterns for different modes unless I devote more output pins for different signal LED's
+  digitalWrite(PIN_LED, digitalRead(PIN_SHK)); // basic off-hook status; might expand later with addressable RGB
 
   switch(newmode){
     case call_incoming:
       ringer.start();
       break;
     case call_ready:
+      #if !ENABLE_DTMF // DTMF and Mozzi don't play nice together AT ALL
       mozzi.play(mozzi.dialtone);
+      #endif
       timeoutStart();
       hooker.start();
       break;
@@ -128,17 +136,14 @@ void modeStart(modes newmode) {
 }
 
 void modeRun(modes mode){
-  // char button;
+  mozzi.run(); // this must always run because mozzi needs a lot of cycles to transition to silence
+
   switch(mode){
     case call_incoming:
       ringer.run();
       break;
     case call_ready:
-      // button = dtmf.tone2char(dtmf.detect());
-      // if(button > 0) {
-      //   Serial.print(button);
-      //   modeGo(call_tone_dialing);
-      // }
+      detectDTMF();
       hooker.run();
       timeoutCheck();
       break;
@@ -147,18 +152,13 @@ void modeRun(modes mode){
       timeoutCheck();
       break;
     case call_tone_dialing:
-      // button = dtmf.tone2char(dtmf.detect());
-      // if(button > 0) {
-      //   Serial.print(button);
-      //   timeoutStart();
-      // }
+      detectDTMF();
       timeoutCheck();
       break;
     case call_timeout:
       timeoutCheck();
       break;
   }
-  mozzi.run(); // this must always run or else it won't run long enough to transition to silence
 }
 
 void modeGo(modes newmode){
@@ -202,4 +202,17 @@ void digitReceivedCallback(char digit){
     modeGo(call_connecting);
     Serial.print(digits);
   }
+}
+
+void detectDTMF(){
+  #if ENABLE_DTMF
+  char button = dtmf.tone2char(dtmf.detect());
+  if(button > 0) {
+    Serial.print(button);
+    if(mode == call_ready)
+      modeGo(call_tone_dialing);
+    else
+      timeoutStart();
+  }
+  #endif
 }

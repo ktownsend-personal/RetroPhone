@@ -17,7 +17,7 @@ class hookHandler {
     bool pulseInProgress;
     unsigned long pulseTime;
     const unsigned pulseGapMin = 10;
-    const unsigned pulseGapMax = 70;
+    const unsigned pulseGapMax = 80;  //probably should be same as SHK debounceDelay in progressModes.h
     unsigned pulseCount;
     void (*dialingStartedCallback)();
     void (*digitReceivedCallback)(char);
