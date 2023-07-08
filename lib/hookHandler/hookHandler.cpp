@@ -1,6 +1,6 @@
 #include <hookHandler.h>
 
-hookHandler::hookHandler(unsigned pinSHK, void (*callback)()) {
+hookHandler::hookHandler(unsigned pinSHK, void (*callback)(bool)) {
   PIN_SHK = pinSHK;
   dialingStartedCallback = callback;
 }
@@ -44,7 +44,7 @@ void hookHandler::run(){
     // notify when dialing started so controller can change mode
     if(dialingStarting){
       dialingStarting = false;
-      dialingStartedCallback();
+      dialingStartedCallback(false);
     }
   }
 }

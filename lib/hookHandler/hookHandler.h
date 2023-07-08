@@ -5,7 +5,7 @@
 
 class hookHandler {
   public:
-    hookHandler(unsigned pinSHK, void (*callback)());
+    hookHandler(unsigned pinSHK, void (*callback)(bool));
     void setDigitCallback(void (*callback)(char));
     void start();
     void run();
@@ -19,7 +19,7 @@ class hookHandler {
     const unsigned pulseGapMin = 10;
     const unsigned pulseGapMax = 80;  //probably should be same as SHK debounceDelay in progressModes.h
     unsigned pulseCount;
-    void (*dialingStartedCallback)();
+    void (*dialingStartedCallback)(bool);
     void (*digitReceivedCallback)(char);
 };
 

@@ -36,6 +36,8 @@ This hobby project is to make a few old phones interactive for my retro room so 
 * pulse dialing detection is working
 * added simulated call connection after dialing a number just to hear the ring and busy sounds (sound chosen by even or odd first dialed digit)
 * improved audio levels using both software tweaks and increasing gain of op-amp
+* implemented DTMF dialing, which works great if I disable dialtone because PhoneDTMF and Mozzi don't play well together (see challenges section)
+  * currently using conditional compilation to enable DTMF without dialtone for testing and easily disable when not testing it
 
 ## Next Steps
 * documentation
@@ -71,6 +73,8 @@ This hobby project is to make a few old phones interactive for my retro room so 
 
 ## Notable
 * RM and FR pins on the SLIC are both necessary for rining. The RM pin sets the higher ringing voltage, and the FR pin flip flops the polarity on high and low cycles. Both are definitely needed, although the electronic ringer on my Sony slimline works fine with just FR toggled, the physical bell on the Snoopy phone requires the RM to have enough power to physically move the armature. The FR pin should be toggled at 50% duty cycle at 20Hz with cadence 2s-on/4s-off for US ring.
+* When using PhoneDTMF library, we seem to need 300 sample count and 6000 frequency to avoid detection dropouts while a button is pressed (which causes repeated numbers)
+  * I tried 50ms debounce and still got gaps, and since 50ms tone and 50ms space are the standard that I saw someplace we probably shouldn't debounce longer
 
 ## Thoughts
 * would interrupts be useful in this project so we can put the device to sleep when idle, but still wake up for incoming wifi call or off-hook pin?

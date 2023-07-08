@@ -12,11 +12,11 @@
 #define CH_FR 0
 #define RING_FREQ 20
 
-#define ENABLE_DTMF false // DTMF and Mozzi don't play nice together, so I want to control them easily
+#define ENABLE_DTMF true // DTMF and Mozzi don't play nice together, so I want to control them easily
 #if ENABLE_DTMF
   #include <PhoneDTMF.h>
   #define PIN_DTMF 14
-  auto dtmf = PhoneDTMF(300); // 70 seems to work well
+  auto dtmf = PhoneDTMF(300);
 #endif
 
 String digits; // this is where we accumulate dialed digits
@@ -35,7 +35,8 @@ void setup() {
 
   #if ENABLE_DTMF
     pinMode(PIN_DTMF, INPUT);
-    dtmf.begin(PIN_DTMF, 4000); // 4000 seems to work well once dialtone stops
+    int f = dtmf.begin(PIN_DTMF, 6000);
+    Serial.printf("DTMF frequency: %d\n", f);
   #endif
 }
 
@@ -108,6 +109,7 @@ void modeStart(modes newmode) {
       #endif
       timeoutStart();
       hooker.start();
+      startDTMF();
       break;
     case call_pulse_dialing:
     case call_tone_dialing:
@@ -184,11 +186,14 @@ void ringCountCallback(int rings){
   Serial.printf("%d.", rings);
 }
 
-//-------------- dialing stuff ---------------------//
+//-------------- dialing stuff to refactor later ---------------------//
 
-void dialingStartedCallback(){
+void dialingStartedCallback(bool isTone){
   digits = "";
-  modeGo(call_pulse_dialing);
+  if(isTone)
+    modeGo(call_tone_dialing);
+  else
+    modeGo(call_pulse_dialing);
 }
 
 // we can use this as callback for both pulse and tone dialing handlers
@@ -204,15 +209,28 @@ void digitReceivedCallback(char digit){
   }
 }
 
+
+bool newDTMF;
+char currentDTMF;
+
+void startDTMF(){
+  newDTMF = true;
+  currentDTMF = 0;
+}
+
 void detectDTMF(){
+  //NOTE: must use 300 sample count and 6000 frequency to avoid detection gaps a button is pressed (causing repeated digits)
   #if ENABLE_DTMF
   char button = dtmf.tone2char(dtmf.detect());
   if(button > 0) {
-    Serial.print(button);
-    if(mode == call_ready)
-      modeGo(call_tone_dialing);
-    else
-      timeoutStart();
+    if(newDTMF) {
+      dialingStartedCallback(true);
+      newDTMF = false;
+    }
+    currentDTMF = button;
+  } else if(currentDTMF > 0) {
+      digitReceivedCallback(currentDTMF);
+      currentDTMF = 0;
   }
   #endif
 }
