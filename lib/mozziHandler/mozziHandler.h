@@ -23,7 +23,7 @@ class mozziHandler
   private:
     regions _region;  // control which call progress sounds to generate based on region
     void messageDialAgain();
-    void toneStart(int *freqs, int *cadences);
+    void toneStart(ToneConfig tc);
     void toneStop();
 };
 

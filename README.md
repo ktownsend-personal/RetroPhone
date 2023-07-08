@@ -7,13 +7,13 @@ Free for anyone to copy from. I live by the motto "inspire, not require" as much
 This hobby project is to make a few old phones interactive for my retro room so that visitors can experience old-school landline phones without my having to subscribe to an actual phone system. 
 
 ## Goals
-* Dial a few phone numbers and get a simulated response from the "other end"
-* Call one of the other phones on display and talk to whoever answers
-* Accurately replicate a real phone experience
+* [ ] Dial a few phone numbers and get a simulated response from the "other end"
+* [ ] Call one of the other phones on display and talk to whoever answers
+* [ ] Accurately replicate a real phone experience
   * [x] physical ringing
   * [x] authentic call progress tones and messages
-  * [ ] touch-tone dialing (DTMF)
   * [x] pulse dialing (rotary dialing)
+  * [ ] touch-tone dialing (DTMF)
 
 ## Optional Goals
 * wifi for signaling and comms between phones if ESP32 can handle DAC/ADC simultaneously without noticeable audio problems
@@ -31,16 +31,26 @@ This hobby project is to make a few old phones interactive for my retro room so 
 * button to ESP32 triggers incoming call (physical ringing) with accurate 20Hz ring frequency and 2s-on/4s-off cadence to the SLIC, which rings the phone physically
 * stable call progress mode transitions with debounce (hook signal bounces a lot)
   * debounce timing tuned to avoid transitions while pulse-dialing
-* real multi-freq progress tones using Mozzi library, using excellent work done by GadgetReboot as a starting point
+* real multi-freq progress tones using Mozzi library, using excellent work done by [GadgetReboot](https://youtu.be/qM0ZhSyA6Jw) as a starting point
   * can also play a recorded message (one was included in the code from GadgetReboot)
 * pulse dialing detection is working
+* added simulated call connection after dialing a number just to hear the ring and busy sounds (sound chosen by even or odd first dialed digit)
+* improved audio levels using both software tweaks and increasing gain of op-amp
 
 ## Next Steps
-* DTMF dialing, decoded in software
-* RGB LED for status colors & patterns representing all of the call states
+* documentation
+  * create a schematic for my circuit
+  * add some pictures...I know you want pictures :)
 * call progress recorded messages
   * need more recordings
   * need a way to sequence a specified number of repeats with delay between, possibly followed by progress tone (i.e., dial again and howler, although could split timeout into two modes)
+* runtime settings adjustable via dialing special codes
+  * switching region is one example, and activating the web server until you hang up is another example
+  * make the setting persisted so it can survive reboot (but shouldn't survive re-flashing probably)
+* DTMF dialing
+  * decoded in software if possible (currently have trouble with blocking sample detection affecting mozzi badly)
+  * decoded with hardware if software not achievable
+* RGB LED for status colors & patterns representing all of the call states
 * trunk line via wifi, or wired if wifi affects audio quality
   * could switch to PiZero or something if ESP32 not up to the task with wifi
 
@@ -55,6 +65,9 @@ This hobby project is to make a few old phones interactive for my retro room so 
   * `not an issue` ~~if the actual ring voltage is present on the SLIC audio out pin we will need to protect the ESP32 with some form of isolation while ringing~~
   * if we decide to use physical wire for the trunk line we will need to disconnect the SLIC audio out from it while dialing
   * if we decide to use DTMF signaling over the trunk audio line before connecting the call we will have to use a switching mechanism to isolate the trunk line and shift the ESP32 audio out pin to the trunk or use a different DAC pin for it
+* tried tone dialing in software but the [PhoneDTMF library](https://github.com/Adrianotiger/phoneDTMF) requires too much sample time and it murders mozzi
+  * which is only a problem when trying to detect during dialtone...once detection has started we switch to silence and the detection would be fine
+  * maybe we can find a trick to detect tone dialing is occurring and switch off the dialtone before engaging PhoneDTMF?
 
 ## Notable
 * RM and FR pins on the SLIC are both necessary for rining. The RM pin sets the higher ringing voltage, and the FR pin flip flops the polarity on high and low cycles. Both are definitely needed, although the electronic ringer on my Sony slimline works fine with just FR toggled, the physical bell on the Snoopy phone requires the RM to have enough power to physically move the armature. The FR pin should be toggled at 50% duty cycle at 20Hz with cadence 2s-on/4s-off for US ring.
@@ -89,7 +102,8 @@ I made this chart to help me track what transitional modes I should implement an
 |---|---|---|---|---|
 |Idle|ON|LISTEN|Website|&bull; website active for status, statistics & configuration (maybe all the time if not affecting operation)|
 |Ready|OFF|Dialer|MF-Dialtone|&bull; switch to Dialing as soon as first number dialed|
-|Dialing|OFF|Dialer||&bull; restart timeout after each dialed number (maybe not necessary; how does real phone system do it?)|
+|Tone-Dialing|OFF|Dialer||&bull; restart timeout after each dialed number (maybe not necessary; how does real phone system do it?)|
+|Pulse-Dialing|OFF|Dialer||&bull; restart timeout after each dialed number (maybe not necessary; how does real phone system do it?)|
 |Connecting|OFF|ROUTE||&bull; negotiate connection|
 |Busy|OFF||MF-Busy|&bull; start timeout|
 |Route Fail|OFF||Recording|&bull; "number not in service"<br>&bull; start timeout|
@@ -105,7 +119,7 @@ I made this chart to help me track what transitional modes I should implement an
 flowchart TD
   subgraph Originator
     idle3(idle) -- off-hook --> ready
-    ready -->|dialing\nstarts| dialing
+    ready -->|dialing\nstarts| dialing(dialing\npulse or tone)
     ready -->|off-hook\ntoo long| timeout
     dialing -->|enough\nnumbers\ndialed| connecting
     dialing -->|off-hook\ntoo long| timeout
