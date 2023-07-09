@@ -37,7 +37,7 @@ This hobby project is to make a few old phones interactive for my retro room so 
 * added simulated call connection after dialing a number just to hear the ring and busy sounds (sound chosen by even or odd first dialed digit)
 * improved audio levels using both software tweaks and increasing gain of op-amp
 * implemented DTMF dialing, which works great if I disable dialtone because PhoneDTMF and Mozzi don't play well together (see challenges section)
-  * currently using conditional compilation to enable DTMF without dialtone for testing and easily disable when not testing it
+  * currently using a variable to switch between dialtone or DTMF to make testing easier
 
 ## Next Steps
 * documentation
