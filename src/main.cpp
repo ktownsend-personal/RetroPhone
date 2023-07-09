@@ -39,7 +39,6 @@ void loop() {
   if(newmode != mode) modeGo(newmode);  // switch to new mode
 }
 
-//TODO: move this to a class; can we do "any" type arg in C++ like we can in golang? Look at template/auto
 bool modeBouncing(modes newmode) {
   // kill ringer faster by skipping debounce when going off-hook; debounce continues fine after mode change
   if(mode == call_incoming && newmode == call_connected) return false;
@@ -65,7 +64,6 @@ modes modeDetect() {
       break;
     case call_incoming:
       if(SHK) return call_connected;
-      // if(!BTN) return call_idle; // enabling this will stop ring when button is released; disable this to ring until answered without having to hold button down
       break;
     default:
       if(!SHK) return call_idle;
@@ -81,7 +79,7 @@ void modeStop(modes oldmode) {
       ringer.stop();
       break;
     default:
-      mozzi.play(mozzi.silent);
+      mozzi.stop();
       break;
   }
 }
@@ -97,19 +95,21 @@ void modeStart(modes newmode) {
       break;
     case call_ready:
       timeoutStart();
-      if(!ENABLE_DTMF) mozzi.play(mozzi.dialtone); // DTMF blocks too much to play audio
+      if(!ENABLE_DTMF) mozzi.playTone(mozzi.dialtone); // DTMF blocks too much to play audio
+      if(ENABLE_DTMF) dtmfer.start();
       hooker.start();
-      dtmfer.start();
       break;
     case call_pulse_dialing:
     case call_tone_dialing:
       timeoutStart();
       break;
-    case call_timeout:
-      mozzi.play(mozzi.howler);
+    case call_timeout1:
+      mozzi.playSample(mozzi.dialAgain, 2, 2000);
+      break;
+    case call_timeout2:
+      mozzi.playTone(mozzi.howler);
       break;
     case call_abandoned:
-      mozzi.play(mozzi.dialAgain);  //TODO: this should really be when dialing times out (played twice then play mozzi.howler) disconnected timeout should skip and just do howler; call_abandoned should be silence
       break;
     case call_connecting:
       //TODO: implement real connection negotiation; this fake simulation rings if first digit even, or busy if odd
@@ -119,10 +119,10 @@ void modeStart(modes newmode) {
         modeGo(call_busy);
       break;
     case call_ringing:
-      mozzi.play(mozzi.ringing);
+      mozzi.playTone(mozzi.ringing);
       break;
     case call_busy:
-      mozzi.play(mozzi.busytone);
+      mozzi.playTone(mozzi.busytone);
       break;
   }
 }
@@ -135,7 +135,7 @@ void modeRun(modes mode){
       ringer.run();
       break;
     case call_ready:
-      if (ENABLE_DTMF) dtmfer.run(); // DTMF blocks too much to play audio, so if we want dialtone we have to disable this
+      if(ENABLE_DTMF) dtmfer.run(); // DTMF blocks too much to play audio, so if we want dialtone we have to disable this
       hooker.run();
       timeoutCheck();
       break;
@@ -147,7 +147,8 @@ void modeRun(modes mode){
       dtmfer.run();
       timeoutCheck();
       break;
-    case call_timeout:
+    case call_timeout1:
+    case call_timeout2:
       timeoutCheck();
       break;
   }
@@ -159,16 +160,15 @@ void modeGo(modes newmode){
   mode = newmode;
 }
 
-//TODO: move timeout to a class?
-
 void timeoutStart(){
   timeoutStarted = millis();
 }
 
 void timeoutCheck(){
   unsigned int since = (millis() - timeoutStarted);
-  if(since > abandonMax && mode == call_timeout) return modeGo(call_abandoned); // check longer max first
-  if(since > timeoutMax && mode != call_timeout) return modeGo(call_timeout);
+  if(since > abandonMax) return (mode == call_abandoned) ? void() : modeGo(call_abandoned); // check by longest max first
+  if(since > timeout2Max) return (mode == call_timeout2) ? void() : modeGo(call_timeout2);  
+  if(since > timeout1Max) return (mode == call_timeout1) ? void() : modeGo(call_timeout1);
 }
 
 // callback from ringer class so we can show ring counts in the serial output
@@ -176,8 +176,7 @@ void ringCountCallback(int rings){
   Serial.printf("%d.", rings);
 }
 
-//-------------- dialing stuff to refactor later ---------------------//
-
+// callback from both tone and DTMF dailing handlers to signal us when dialing has started so we can reset dialed digits and switch off dialtone
 void dialingStartedCallback(bool isTone){
   digits = "";
   if(isTone)
@@ -186,7 +185,7 @@ void dialingStartedCallback(bool isTone){
     modeGo(call_pulse_dialing);
 }
 
-// we can use this as callback for both pulse and tone dialing handlers
+// callback from both tone and DTMF dialing handlers to signal when a digit is dialed so we can accumulate it and decide what to do
 void digitReceivedCallback(char digit){
   timeoutStart();           // reset timeout after user input
   Serial.print(digit);      // debug output show digits as they are received

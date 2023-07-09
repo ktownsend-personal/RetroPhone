@@ -19,7 +19,11 @@ int *tone_cadence_timings;                    // active tone cadence timings; NU
 byte tone_cadence_index = 0;                  // active tone cadence timing index
 unsigned long tone_cadence_until;             // active tone cadence timing expiration
 bool sample_playing = false;                  // whether a sound sample is being played or not
-byte sample_index = 0;
+byte sample_index = 0;                        // active sample segment index
+byte sample_repeat_times = 1;                 // active sample times to play
+byte sample_repeat_count = 0;                 // active sample number of times played
+unsigned sample_repeat_gap = 0;               // active sample gap between repeat plays
+unsigned long sample_repeat_next_start = 0;   // active sample time to play next after gap
 
 // audio osc generators
 // Oscil <table_size, update_rate> oscilName (wavetable)
@@ -29,6 +33,7 @@ Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> tone3(SIN2048_DATA);
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> tone4(SIN2048_DATA);
 
 //TODO: refactor to allow more recordings with any number of samples; probably move to separate class to manage samples, or add to regions.h if using different recording per region
+
 // use: Sample <table_size, update_rate> SampleName (wavetable)
 Sample <DialAgain1_NUM_CELLS, AUDIO_RATE> sample1(DialAgain1_DATA);
 Sample <DialAgain2_NUM_CELLS, AUDIO_RATE> sample2(DialAgain2_DATA);
@@ -89,8 +94,11 @@ void mozziHandler::run() {
   }
 
   // rotate active sample as each one completes
-  //TODO: we will need to add a configurable count for repeats and gap duration in between
   if (sample_playing) {
+    if (sample_index == 0 && sample_repeat_next_start < millis()){
+      sample_index = 1;
+      sample1.start();
+    }
     if (sample_index == 1 && !sample1.isPlaying()) {
       sample_index = 2;
       sample2.start();
@@ -100,13 +108,22 @@ void mozziHandler::run() {
       sample3.start();
     }
     if (sample_index == 3 && !sample3.isPlaying()) {
-      sample_index = 1;
-      sample1.start();
+      sample_index = 0;
+      sample_repeat_count++;
+      if(sample_repeat_times > sample_repeat_count) 
+        sample_repeat_next_start = millis() + sample_repeat_gap;
+      else
+        sample_playing = false;
     }
   }
 }
 
-void mozziHandler::play(tones tone){
+void mozziHandler::stop(){
+  toneStop();
+}
+
+void mozziHandler::playTone(tones tone){
+  toneStop(); // ensure anything currently playing is stopped first
   switch(tone){
     case dialtone:
       return toneStart(dtmfRegion.dial);
@@ -116,14 +133,21 @@ void mozziHandler::play(tones tone){
       return toneStart(dtmfRegion.busy);
     case howler:
       return toneStart(dtmfRegion.howl);
-    case dialAgain:
-      return messageDialAgain();
-    default:
-      return toneStop();
   }
 }
 
-void mozziHandler::messageDialAgain() {
+void mozziHandler::playSample(samples sample, byte repeat, unsigned gapTime) {
+  toneStop(); // ensure anything currently playing is stopped first
+  switch(sample){
+    case dialAgain:
+      return messageDialAgain(repeat, gapTime);
+  }
+}
+
+void mozziHandler::messageDialAgain(byte repeat, unsigned gapTime) {
+  sample_repeat_times = repeat;
+  sample_repeat_gap = gapTime;
+  sample_repeat_count = 0;
   sample_playing = true;
   sample_index = 1;
   sample1.start();
