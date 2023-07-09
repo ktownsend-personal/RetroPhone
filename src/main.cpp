@@ -65,7 +65,7 @@ modes modeDetect() {
       break;
     case call_incoming:
       if(SHK) return call_connected;
-      if(!BTN) return call_idle;
+      // if(!BTN) return call_idle; // enabling this will stop ring when button is released; disable this to ring until answered without having to hold button down
       break;
     default:
       if(!SHK) return call_idle;
