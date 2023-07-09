@@ -4,6 +4,7 @@ ringHandler::ringHandler(unsigned pinRM, unsigned pinFR, unsigned channelFR, uns
   PIN_RM = pinRM;
   CH_FR = channelFR;
   RING_FREQ = freq;
+  pinMode(pinRM, OUTPUT);
   ledcSetup(channelFR, freq, 8);
   ledcAttachPin(pinFR, channelFR);
 }

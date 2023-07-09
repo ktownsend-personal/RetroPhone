@@ -54,6 +54,4 @@ void timeoutCheck();
 void ringCountCallback(int);
 void dialingStartedCallback(bool isTone);
 void digitReceivedCallback(char);
-void startDTMF();
-void detectDTMF();
 #endif

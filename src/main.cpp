@@ -2,42 +2,34 @@
 #include <progressModes.h>
 #include <ringHandler.h>
 #include <hookHandler.h>
+#include <dtmfHandler.h>
 #include <mozziHandler.h>
 
 #define PIN_LED 2
 #define PIN_BTN 12
+#define PIN_DTMF 14
 #define PIN_SHK 13
 #define PIN_RM 32
 #define PIN_FR 33
 #define CH_FR 0
 #define RING_FREQ 20
 
-#define ENABLE_DTMF true // DTMF and Mozzi don't play nice together, so I want to control them easily
-#if ENABLE_DTMF
-  #include <PhoneDTMF.h>
-  #define PIN_DTMF 14
-  auto dtmf = PhoneDTMF(300);
-#endif
+const bool ENABLE_DTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
 
 String digits; // this is where we accumulate dialed digits
 auto ringer = ringHandler(PIN_RM, PIN_FR, CH_FR, RING_FREQ);
 auto hooker = hookHandler(PIN_SHK, dialingStartedCallback);
+auto dtmfer = dtmfHandler(PIN_DTMF, dialingStartedCallback);
 auto mozzi = mozziHandler(region_northAmerica);
 
 void setup() {
   pinMode(PIN_LED, OUTPUT);
   pinMode(PIN_BTN, INPUT_PULLDOWN);
   pinMode(PIN_SHK, INPUT_PULLUP);
-  pinMode(PIN_RM, OUTPUT);
   Serial.begin(115200);
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
-
-  #if ENABLE_DTMF
-    pinMode(PIN_DTMF, INPUT);
-    int f = dtmf.begin(PIN_DTMF, 6000);
-    Serial.printf("DTMF frequency: %d\n", f);
-  #endif
+  dtmfer.setDigitCallback(digitReceivedCallback);
 }
 
 void loop() {
@@ -95,7 +87,7 @@ void modeStop(modes oldmode) {
 }
 
 void modeStart(modes newmode) {
-  Serial.printf("%s...", modeNames[newmode]);
+  Serial.printf("%s...", modeNames[newmode].c_str());
 
   digitalWrite(PIN_LED, digitalRead(PIN_SHK)); // basic off-hook status; might expand later with addressable RGB
 
@@ -104,12 +96,10 @@ void modeStart(modes newmode) {
       ringer.start();
       break;
     case call_ready:
-      #if !ENABLE_DTMF // DTMF and Mozzi don't play nice together AT ALL
-      mozzi.play(mozzi.dialtone);
-      #endif
       timeoutStart();
+      if(!ENABLE_DTMF) mozzi.play(mozzi.dialtone); // DTMF blocks too much to play audio
       hooker.start();
-      startDTMF();
+      dtmfer.start();
       break;
     case call_pulse_dialing:
     case call_tone_dialing:
@@ -123,7 +113,7 @@ void modeStart(modes newmode) {
       break;
     case call_connecting:
       //TODO: implement real connection negotiation; this fake simulation rings if first digit even, or busy if odd
-      if((digits[0] - '0') % 2== 0)
+      if(digits[0] % 2== 0)
         modeGo(call_ringing);
       else
         modeGo(call_busy);
@@ -145,7 +135,7 @@ void modeRun(modes mode){
       ringer.run();
       break;
     case call_ready:
-      detectDTMF();
+      if (ENABLE_DTMF) dtmfer.run(); // DTMF blocks too much to play audio, so if we want dialtone we have to disable this
       hooker.run();
       timeoutCheck();
       break;
@@ -154,7 +144,7 @@ void modeRun(modes mode){
       timeoutCheck();
       break;
     case call_tone_dialing:
-      detectDTMF();
+      dtmfer.run();
       timeoutCheck();
       break;
     case call_timeout:
@@ -203,34 +193,8 @@ void digitReceivedCallback(char digit){
   digits += digit;          // accumulate the digit
 
   //TODO: decide when appropriate to "connect" (i.e., another node, simulation or special behavior [config website?])
-  if(digits.length() > 3){  // fake decision to connect
+  if(digits.length() > 6){  // fake decision to connect
     modeGo(call_connecting);
     Serial.print(digits);
   }
-}
-
-
-bool newDTMF;
-char currentDTMF;
-
-void startDTMF(){
-  newDTMF = true;
-  currentDTMF = 0;
-}
-
-void detectDTMF(){
-  //NOTE: must use 300 sample count and 6000 frequency to avoid detection gaps a button is pressed (causing repeated digits)
-  #if ENABLE_DTMF
-  char button = dtmf.tone2char(dtmf.detect());
-  if(button > 0) {
-    if(newDTMF) {
-      dialingStartedCallback(true);
-      newDTMF = false;
-    }
-    currentDTMF = button;
-  } else if(currentDTMF > 0) {
-      digitReceivedCallback(currentDTMF);
-      currentDTMF = 0;
-  }
-  #endif
 }

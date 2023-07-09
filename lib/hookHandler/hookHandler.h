@@ -11,7 +11,7 @@ class hookHandler {
     void run();
 
   private:
-    unsigned PIN_SHK;
+    unsigned PIN;
     bool SHK;
     bool dialingStarting;
     bool pulseInProgress;

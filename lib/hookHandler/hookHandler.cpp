@@ -1,7 +1,7 @@
 #include <hookHandler.h>
 
 hookHandler::hookHandler(unsigned pinSHK, void (*callback)(bool)) {
-  PIN_SHK = pinSHK;
+  PIN = pinSHK;
   dialingStartedCallback = callback;
 }
 
@@ -17,7 +17,7 @@ void hookHandler::start(){
 }
 
 void hookHandler::run(){
-  bool newSHK = digitalRead(PIN_SHK);
+  bool newSHK = digitalRead(PIN);
   unsigned gap = millis() - pulseTime;
   if(newSHK && pulseInProgress && gap > pulseGapMax) {
     // accumulate digit and reset pulse count
