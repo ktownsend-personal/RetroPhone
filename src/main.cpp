@@ -5,21 +5,32 @@
 #include <dtmfHandler.h>
 #include <mozziHandler.h>
 
-#define PIN_LED 2
-#define PIN_BTN 12
-#define PIN_DTMF 14
-#define PIN_SHK 13
-#define PIN_RM 32
-#define PIN_FR 33
-#define CH_FR 0
-#define RING_FREQ 20
+#define PIN_LED 2           // using onboard LED until I get my addressable RGB
+#define PIN_BTN 12          // external button to initiate ringing
+#define PIN_AUDIO_IN 14     // software DTMF and live audio digitization if we are able to make that work 
+#define PIN_AUDIO_OUT_L 25  // Mozzi defaults to this
+#define PIN_AUDIO_OUT_R 26  // Mozzi defaults to this
+
+// SLIC module
+#define PIN_SHK 13    // SLIC SHK, off-hook
+#define PIN_RM 32     // SLIC RM, ring mode enable
+#define PIN_FR 33     // SLIC FR, ring toggle, use PWM 50%
+#define CH_FR 0       // SLIC FR, PWM channel
+#define RING_FREQ 20  // SLID FR, PWM frequency
+
+// DTMF module
+#define PIN_Q1 35   // DTMF bit 1
+#define PIN_Q2 34   // DTMF bit 2
+#define PIN_Q3 36   // DTMF bit 3
+#define PIN_Q4 39   // DTMF bit 4
+#define PIN_STQ 27  // DTMF active and ready to read
 
 const bool ENABLE_DTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
 
 String digits; // this is where we accumulate dialed digits
 auto ringer = ringHandler(PIN_RM, PIN_FR, CH_FR, RING_FREQ);
 auto hooker = hookHandler(PIN_SHK, dialingStartedCallback);
-auto dtmfer = dtmfHandler(PIN_DTMF, dialingStartedCallback);
+auto dtmfer = dtmfHandler(PIN_AUDIO_IN, dialingStartedCallback);
 auto mozzi = mozziHandler(region_northAmerica);
 
 void setup() {
