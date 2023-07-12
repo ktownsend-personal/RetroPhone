@@ -36,25 +36,31 @@ This hobby project is to make a few old phones interactive for my retro room so 
 * pulse dialing detection is working
 * added simulated call connection after dialing a number just to hear the ring and busy sounds (sound chosen by even or odd first dialed digit)
 * improved audio levels using both software tweaks and increasing gain of op-amp
-* implemented DTMF dialing, which works great if I disable dialtone because PhoneDTMF and Mozzi don't play well together (see challenges section)
+* detecting tone dialing with [PhoneDTMF](https://github.com/Adrianotiger/phoneDTMF), except it requires too much of the processing loop for anything else to work well (especially audio via Mozzi...see challenges section)
   * currently using a variable to switch between dialtone or DTMF to make testing easier
+* specify a number of repeats for a recorded message
+* full sequence of not finishing dialing is pretty realistic: dialtone, "try again" message twice, howler sound for a while, then silence
+* dialing 7 digits will play ringing or busy signal in handset depending on first digit being odd or even
+  * this is just a demo until I get real call negotiation working
 
 ## Next Steps
 * documentation
   * create a schematic for my circuit
   * add some pictures...I know you want pictures :)
 * call progress recorded messages
-  * need more recordings
-  * need a way to sequence a specified number of repeats with delay between, possibly followed by progress tone (i.e., dial again and howler, although could split timeout into two modes)
+  * need more recordings, maybe need to use MicroSD for storage, but that might be too slow to read from
+  * see if file splitting is actually necessary or if we can have single files (original author split to solve problem on ESP8266)
 * runtime settings adjustable via dialing special codes
-  * switching region is one example, and activating the web server until you hang up is another example
-  * make the setting persisted so it can survive reboot (but shouldn't survive re-flashing probably)
+  * switching region, toggling DTMF/dialtone, and activating the web server until you hang up
+  * make the setting persisted so it can survive reboot and flashing
 * DTMF dialing
   * decoded in software if possible (currently have trouble with blocking sample detection affecting mozzi badly)
   * decoded with hardware if software not achievable
 * RGB LED for status colors & patterns representing all of the call states
 * trunk line via wifi, or wired if wifi affects audio quality
-  * could switch to PiZero or something if ESP32 not up to the task with wifi
+  * could switch to PiZeroW or something if simultaneious ADC/DAC/Wifi is too much for ESP32
+  * might be an option to design these modules for a backplane in a single housing and just use wiring between the modules for analog audio (think of it like a local switching office)
+* add filter to block 20Hz ring signal from SLIC's audio out line (mostly to keep it off my external speaker when it's ringing)
 
 ## Challenges
 * Timing of stopping the ringer when handset taken off-hook is difficult to get "immediate", so there is a brief amount of clicking on the handset when first picked up. 
