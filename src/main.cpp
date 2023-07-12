@@ -20,10 +20,10 @@
 #define RING_FREQ 20        // SLIC FR, PWM frequency
 
 // DTMF module
-#define PIN_Q1 35           // DTMF bit 1
-#define PIN_Q2 34           // DTMF bit 2
-#define PIN_Q3 36           // DTMF bit 3
-#define PIN_Q4 39           // DTMF bit 4
+#define PIN_Q1 36           // DTMF bit 1
+#define PIN_Q2 39           // DTMF bit 2
+#define PIN_Q3 34           // DTMF bit 3
+#define PIN_Q4 35           // DTMF bit 4
 #define PIN_STQ 27          // DTMF active and ready to read
 
 const bool ENABLE_DTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
@@ -43,6 +43,7 @@ void setup() {
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
   dtmfer.setDigitCallback(digitReceivedCallback);
+  dtmfmod.setDigitCallback(digitReceivedCallback);
 }
 
 void loop() {
@@ -108,13 +109,14 @@ void modeStart(modes newmode) {
       break;
     case call_ready:
       timeoutStart();
+      hooker.start();
+      // software-DTMF blocks too much to play audio, but hardware-DTMF ok
       if(ENABLE_DTMF) {
         dtmfer.start();
       } else {
         dtmfmod.start();
-        mozzi.playTone(mozzi.dialtone); // software-DTMF blocks too much to play audio, but hardware-DTMF ok
+        mozzi.playTone(mozzi.dialtone);
       }
-      hooker.start();
       break;
     case call_pulse_dialing:
     case call_tone_dialing:
@@ -165,7 +167,12 @@ void modeRun(modes mode){
       timeoutCheck();
       break;
     case call_tone_dialing:
-      dtmfer.run();
+      // software-DTMF blocks too much to play audio, but hardware-DTMF ok
+      if(ENABLE_DTMF) {
+        dtmfer.run();
+      } else {
+        dtmfmod.run();
+      }
       timeoutCheck();
       break;
     case call_timeout1:
