@@ -24,15 +24,12 @@ void dtmfModule::start(){
 }
 
 void dtmfModule::run(){
-
-  bool active = digitalRead(STQ);
-
-  if(active) {
+  if(digitalRead(STQ)) {
     if(newDTMF) {
       dialingStartedCallback(true);
       newDTMF = false;
     }
-    byte tone = digitalRead(Q1) | (digitalRead(Q2) << 1) | (digitalRead(Q3) << 2) | (digitalRead(Q4) << 3);
+    byte tone = 0x00 | (digitalRead(Q1) << 0) | (digitalRead(Q2) << 1) | (digitalRead(Q3) << 2) | (digitalRead(Q4) << 3);
     if(tone != currentDTMF) {
       currentDTMF = tone;
 
@@ -41,7 +38,8 @@ void dtmfModule::run(){
       // Serial.printf("<space=%dms>", leadingEdgeTime - trailingEdgeTime);
     }
   } else if(currentDTMF > 0) {
-    digitReceivedCallback(tone2char(currentDTMF));
+    byte digit = tone2char(currentDTMF);
+    if(digit != ' ') digitReceivedCallback(tone2char(currentDTMF));
     currentDTMF = 0;
 
     // measuring tone time
