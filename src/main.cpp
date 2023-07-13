@@ -26,7 +26,7 @@
 #define PIN_Q4 35           // DTMF bit 4
 #define PIN_STQ 27          // DTMF active and ready to read
 
-const bool ENABLE_DTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
+bool ENABLE_DTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
 
 String digits; // this is where we accumulate dialed digits
 auto ringer = ringHandler(PIN_RM, PIN_FR, CH_FR);
@@ -242,18 +242,26 @@ void digitReceivedCallback(char digit){
 }
 
 void configureByNumber(String starcode){
+  
   //TODO: ack & error beeps
+
   if(starcode[0] != '*') return;
-  if(starcode[1] == '1'){
-    switch(starcode[2]){
-      case '1': 
-        mozzi.changeRegion(region_northAmerica);
-        Serial.print("region changed to North America");
-        break;
-      case '2': 
-        mozzi.changeRegion(region_unitedKingdom);
-        Serial.print("region changed to United Kingdom");
-        break;
-    }
+  switch(starcode[1]){
+    case '1':
+      switch(starcode[2]){
+        case '1': 
+          mozzi.changeRegion(region_northAmerica);
+          Serial.print("region changed to North America");
+          break;
+        case '2': 
+          mozzi.changeRegion(region_unitedKingdom);
+          Serial.print("region changed to United Kingdom");
+          break;
+      }
+      break;
+    case '2':
+      ENABLE_DTMF = !!starcode[2];
+      Serial.printf("DTMF using %s decoder", ENABLE_DTMF ? "software" : "hardware");
+      break;
   }
 }
