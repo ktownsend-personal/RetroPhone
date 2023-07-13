@@ -6,8 +6,6 @@
 #include <dtmfHandler.h>
 #include <dtmfModule.h>
 #include <Preferences.h>
-#include "nvs.h"
-#include "nvs_flash.h"
 
 #define PIN_LED 2           // using onboard LED until I get my addressable RGB
 #define PIN_BTN 12          // external button to initiate ringing
@@ -50,8 +48,7 @@ void setup() {
   Serial.println("RetroPhone is starting up...");
 
   // initialize with persisted settings
-  nvs_flash_init();
-  prefs.begin("RetroPhone", false);
+  // prefs.begin("phone", false);
   // bool dtmfmode = prefs.getBool("dtmf", false);
   // Serial.printf("DTMF mode %s\n", dtmfmode ? "software" : "hardware");
   // softwareDTMF = dtmfmode;
@@ -255,9 +252,9 @@ void digitReceivedCallback(char digit){
     modeGo(call_operator);
   }else if(digits.length() == 3 && digits[0] == '*'){
     modeGo(system_config);
-  }else if(digits.length() == 4 && digits.substring(0, 1) == "22"){
+  }else if(digits.length() == 4 && digits.substring(0, 2) == "22"){
     // pulse dialing can't dial *, so we are using "22" as trigger and normalizing it to * for system_config mode
-    digits = '*' + digits.substring(2, 3);
+    digits = '*' + digits.substring(2, 2);
     modeGo(system_config);
   }else if(digits.length() == 7){
     modeGo(call_connecting);
