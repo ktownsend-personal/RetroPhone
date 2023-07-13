@@ -254,7 +254,7 @@ void digitReceivedCallback(char digit){
     modeGo(system_config);
   }else if(digits.length() == 4 && digits.substring(0, 2) == "22"){
     // pulse dialing can't dial *, so we are using "22" as trigger and normalizing it to * for system_config mode
-    digits = '*' + digits.substring(2, 2);
+    digits = String("*") + digits.substring(2);
     modeGo(system_config);
   }else if(digits.length() == 7){
     modeGo(call_connecting);
@@ -271,19 +271,19 @@ void configureByNumber(String starcode){
       switch(starcode[2]){
         case '1': 
           mozzi.changeRegion(region_northAmerica);
-          prefs.putUInt("region", region_northAmerica);
+          // prefs.putUInt("region", region_northAmerica);
           Serial.print("region changed to North America");
           break;
         case '2': 
           mozzi.changeRegion(region_unitedKingdom);
-          prefs.putUInt("region", region_unitedKingdom);
+          // prefs.putUInt("region", region_unitedKingdom);
           Serial.print("region changed to United Kingdom");
           break;
       }
       break;
     case '2':
       softwareDTMF = !!(starcode[2] - '0');
-      prefs.putBool("dtmf", softwareDTMF);
+      // prefs.putBool("dtmf", softwareDTMF);
       Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
       break;
   }
