@@ -5,6 +5,7 @@
 #include <mozziHandler.h>
 #include <dtmfHandler.h>
 #include <dtmfModule.h>
+#include <Preferences.h>
 
 #define PIN_LED 2           // using onboard LED until I get my addressable RGB
 #define PIN_BTN 12          // external button to initiate ringing
@@ -29,6 +30,7 @@
 bool ENABLE_DTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
 
 String digits; // this is where we accumulate dialed digits
+auto prefs = Preferences();
 auto ringer = ringHandler(PIN_RM, PIN_FR, CH_FR);
 auto hooker = hookHandler(PIN_SHK, dialingStartedCallback);
 auto dtmfer = dtmfHandler(PIN_AUDIO_IN, dialingStartedCallback);
@@ -40,6 +42,12 @@ void setup() {
   pinMode(PIN_BTN, INPUT_PULLDOWN);
   pinMode(PIN_SHK, INPUT_PULLUP);
   Serial.begin(115200);
+
+  // initialize with persisted settings
+  prefs.begin("RetroPhone", false);
+  ENABLE_DTMF = prefs.getBool("dtmf", false);
+  mozzi.changeRegion((regions)prefs.getUInt("region", region_northAmerica));
+  
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
   dtmfer.setDigitCallback(digitReceivedCallback);
@@ -101,6 +109,7 @@ void modeStop(modes oldmode) {
 void modeStart(modes newmode) {
   Serial.printf("%s...", modeNames[newmode].c_str());
 
+  //TODO: I noticed it didn't light blue when answering a ring...look into that
   digitalWrite(PIN_LED, digitalRead(PIN_SHK)); // basic off-hook status; might expand later with addressable RGB
 
   switch(newmode){
@@ -251,16 +260,19 @@ void configureByNumber(String starcode){
       switch(starcode[2]){
         case '1': 
           mozzi.changeRegion(region_northAmerica);
+          prefs.putUInt("region", region_northAmerica);
           Serial.print("region changed to North America");
           break;
         case '2': 
           mozzi.changeRegion(region_unitedKingdom);
+          prefs.putUInt("region", region_unitedKingdom);
           Serial.print("region changed to United Kingdom");
           break;
       }
       break;
     case '2':
       ENABLE_DTMF = !!(starcode[2] - '0');
+      prefs.putBool("dtmf", ENABLE_DTMF);
       Serial.printf("DTMF using %s decoder", ENABLE_DTMF ? "software" : "hardware");
       break;
   }
