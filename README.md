@@ -45,10 +45,12 @@ This hobby project is to make a few old phones interactive for my retro room so 
 * full sequence of not finishing dialing is pretty realistic: dialtone, "try again" message twice, howler sound for a while, then silence
 * dialing 7 digits will play ringing or busy signal in handset depending on first digit being odd or even
   * this is just a demo until I get real call negotiation working
+* added configuration by dialing star-codes (i.e., *11 and *12 to change region for call progress tones)
+* made physical ringing regional too
 
 ## Next Steps
 * runtime settings adjustable via dialing special codes
-  * switching region, toggling DTMF/dialtone, and activating the web server until you hang up
+  * switching region (done), toggling DTMF/dialtone, and activating the web server until you hang up
   * make the setting persisted so it can survive reboot and flashing
 * add filter to block 20Hz ring signal from SLIC's audio out line (mostly to keep it off my external speaker when it's ringing)
 * call progress recorded messages

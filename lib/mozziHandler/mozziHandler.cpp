@@ -86,6 +86,10 @@ void mozziHandler::changeRegion(regions region){
   mozziRegion = RegionConfig(region);
 }
 
+RegionConfig mozziHandler::currentRegion(){
+  return mozziRegion;
+}
+
 void mozziHandler::run() {
   audioHook(); // handle mozzi operations periodically
 

@@ -29,7 +29,7 @@
 const bool ENABLE_DTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
 
 String digits; // this is where we accumulate dialed digits
-auto ringer = ringHandler(PIN_RM, PIN_FR, CH_FR, RING_FREQ);
+auto ringer = ringHandler(PIN_RM, PIN_FR, CH_FR);
 auto hooker = hookHandler(PIN_SHK, dialingStartedCallback);
 auto dtmfer = dtmfHandler(PIN_AUDIO_IN, dialingStartedCallback);
 auto dtmfmod = dtmfModule(PIN_Q1, PIN_Q2, PIN_Q3, PIN_Q4, PIN_STQ, dialingStartedCallback);
@@ -105,7 +105,8 @@ void modeStart(modes newmode) {
 
   switch(newmode){
     case call_incoming:
-      ringer.start();
+      //TODO: we may need to move region into a dedicated library instead of inside mozziHandler since it's no longer just mozzi settings
+      ringer.start(mozzi.currentRegion().ringer.freq, mozzi.currentRegion().ringer.cadence);
       break;
     case call_ready:
       digits = "";

@@ -1,11 +1,10 @@
 #include <ringHandler.h>
 
-ringHandler::ringHandler(unsigned pinRM, unsigned pinFR, unsigned channelFR, unsigned freq) {
+ringHandler::ringHandler(unsigned pinRM, unsigned pinFR, unsigned channelFR) {
   PIN_RM = pinRM;
   CH_FR = channelFR;
-  RING_FREQ = freq;
   pinMode(pinRM, OUTPUT);
-  ledcSetup(channelFR, freq, 8);
+  ledcSetup(channelFR, 0, 8); // this freq will get replaced by start(), so it's fairly arbitrary
   ledcAttachPin(pinFR, channelFR);
 }
 
@@ -13,18 +12,21 @@ void ringHandler::setCounterCallback(void (*callback)(const int)){
   counterCallback = callback;
 }
 
-void ringHandler::start(){
-  ringCount = 0;
+void ringHandler::start(int freq, int* cadence){
+  RING_FREQ = freq;
+  ringCadence = cadence;
+  cadenceCount = cadence[0];
   cadenceIndex = -1;
   cadenceSince = 0;
+  ringCount = 0;
   run();
 }
 
 void ringHandler::run(){
-  if(cadenceIndex >= 0 && (millis() - cadenceSince) < cadence[cadenceIndex]) return;
+  if(cadenceIndex > 0 && (millis() - cadenceSince) < ringCadence[cadenceIndex]) return;
   cadenceSince = millis();
   cadenceIndex++;
-  if(cadenceIndex >= cadenceLength) cadenceIndex = 0;
+  if(cadenceIndex > cadenceCount) cadenceIndex = 0;
   if(cadenceIndex % 2 == 0) on(); else off();
 }
 
