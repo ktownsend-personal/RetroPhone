@@ -260,7 +260,7 @@ void configureByNumber(String starcode){
       }
       break;
     case '2':
-      ENABLE_DTMF = !!starcode[2];
+      ENABLE_DTMF = !!(starcode[2] - '0');
       Serial.printf("DTMF using %s decoder", ENABLE_DTMF ? "software" : "hardware");
       break;
   }
