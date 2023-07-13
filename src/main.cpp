@@ -6,6 +6,8 @@
 #include <dtmfHandler.h>
 #include <dtmfModule.h>
 #include <Preferences.h>
+#include "nvs.h"
+#include "nvs_flash.h"
 
 #define PIN_LED 2           // using onboard LED until I get my addressable RGB
 #define PIN_BTN 12          // external button to initiate ringing
@@ -27,7 +29,7 @@
 #define PIN_Q4 35           // DTMF bit 4
 #define PIN_STQ 27          // DTMF active and ready to read
 
-bool ENABLE_DTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
+bool softwareDTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
 
 String digits; // this is where we accumulate dialed digits
 auto prefs = Preferences();
@@ -42,16 +44,17 @@ void setup() {
   pinMode(PIN_BTN, INPUT_PULLDOWN);
   pinMode(PIN_SHK, INPUT_PULLUP);
   Serial.begin(115200);
-  auto serialTimeout = millis() + 2000; // wait up to 2 seconds for serial connection
-  while (!Serial && millis() < serialTimeout){} // wait for console to connect
+  auto serialTimeout = millis() + 2000;         // wait up to 2 seconds for serial connection
+  while (!Serial && millis() < serialTimeout);  // wait for console to connect
   Serial.println();
   Serial.println("RetroPhone is starting up...");
 
   // initialize with persisted settings
-  // prefs.begin("RetroPhone", false);
+  nvs_flash_init();
+  prefs.begin("RetroPhone", false);
   // bool dtmfmode = prefs.getBool("dtmf", false);
   // Serial.printf("DTMF mode %s\n", dtmfmode ? "software" : "hardware");
-  // ENABLE_DTMF = dtmfmode;
+  // softwareDTMF = dtmfmode;
   // regions r = (regions)prefs.getUInt("region", region_northAmerica);
   // Serial.printf("Region %s\n", r == region_northAmerica ? "North America" : "United Kingdom");
   // mozzi.changeRegion(r);
@@ -133,7 +136,7 @@ void modeStart(modes newmode) {
       timeoutStart();
       hooker.start();
       // software-DTMF blocks too much to play audio, but hardware-DTMF ok
-      if(ENABLE_DTMF) {
+      if(softwareDTMF) {
         dtmfer.start();
       } else {
         dtmfmod.start();
@@ -184,7 +187,7 @@ void modeRun(modes mode){
       ringer.run();
       break;
     case call_ready:
-      if(ENABLE_DTMF) {
+      if(softwareDTMF) {
         dtmfer.run();   // software-DTMF blocks too much to play audio, so if we want dialtone we have to disable this
       } else {
         dtmfmod.run();  // hardware DTMF module ok to run with dialtone
@@ -198,7 +201,7 @@ void modeRun(modes mode){
       break;
     case call_tone_dialing:
       // software-DTMF blocks too much to play audio, but hardware-DTMF ok
-      if(ENABLE_DTMF) {
+      if(softwareDTMF) {
         dtmfer.run();
       } else {
         dtmfmod.run();
@@ -282,9 +285,9 @@ void configureByNumber(String starcode){
       }
       break;
     case '2':
-      ENABLE_DTMF = !!(starcode[2] - '0');
-      prefs.putBool("dtmf", ENABLE_DTMF);
-      Serial.printf("DTMF using %s decoder", ENABLE_DTMF ? "software" : "hardware");
+      softwareDTMF = !!(starcode[2] - '0');
+      prefs.putBool("dtmf", softwareDTMF);
+      Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
       break;
   }
 }
