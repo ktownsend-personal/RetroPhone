@@ -4,7 +4,7 @@ ringHandler::ringHandler(unsigned pinRM, unsigned pinFR, unsigned channelFR) {
   PIN_RM = pinRM;
   CH_FR = channelFR;
   pinMode(pinRM, OUTPUT);
-  ledcSetup(channelFR, 0, 8); // this freq will get replaced by start(), so it's fairly arbitrary
+  ledcSetup(channelFR, 20, 8); // this freq will get replaced by start(), so it's fairly arbitrary
   ledcAttachPin(pinFR, channelFR);
 }
 
@@ -16,7 +16,7 @@ void ringHandler::start(int freq, int* cadence){
   RING_FREQ = freq;
   ringCadence = cadence;
   cadenceCount = cadence[0];
-  cadenceIndex = -1;
+  cadenceIndex = 0;
   cadenceSince = 0;
   ringCount = 0;
   run();
@@ -26,8 +26,8 @@ void ringHandler::run(){
   if(cadenceIndex > 0 && (millis() - cadenceSince) < ringCadence[cadenceIndex]) return;
   cadenceSince = millis();
   cadenceIndex++;
-  if(cadenceIndex > cadenceCount) cadenceIndex = 0;
-  if(cadenceIndex % 2 == 0) on(); else off();
+  if(cadenceIndex > cadenceCount) cadenceIndex = 1;
+  if(cadenceIndex % 2 == 1) on(); else off();
 }
 
 void ringHandler::stop(){
