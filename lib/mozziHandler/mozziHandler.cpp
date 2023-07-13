@@ -12,18 +12,18 @@
 // use #define for CONTROL_RATE, not a constant
 #define CONTROL_RATE 64  // Hz, powers of 2 are most reliable
 
-RegionConfig dtmfRegion(region_northAmerica); // regional tone defs
-int tone_gain = 1;                            // active tone gain multiplier
-bool tone_cadence_on = false;                 // active tone cadence on/off
-int *tone_cadence_timings;                    // active tone cadence timings; NULL to stop
-byte tone_cadence_index = 0;                  // active tone cadence timing index
-unsigned long tone_cadence_until;             // active tone cadence timing expiration
-bool sample_playing = false;                  // whether a sound sample is being played or not
-byte sample_index = 0;                        // active sample segment index
-byte sample_repeat_times = 1;                 // active sample times to play
-byte sample_repeat_count = 0;                 // active sample number of times played
-unsigned sample_repeat_gap = 0;               // active sample gap between repeat plays
-unsigned long sample_repeat_next_start = 0;   // active sample time to play next after gap
+RegionConfig mozziRegion(region_northAmerica); // regional tone defs
+int tone_gain = 1;                             // active tone gain multiplier
+bool tone_cadence_on = false;                  // active tone cadence on/off
+int *tone_cadence_timings;                     // active tone cadence timings; NULL to stop
+byte tone_cadence_index = 0;                   // active tone cadence timing index
+unsigned long tone_cadence_until;              // active tone cadence timing expiration
+bool sample_playing = false;                   // whether a sound sample is being played or not
+byte sample_index = 0;                         // active sample segment index
+byte sample_repeat_times = 1;                  // active sample times to play
+byte sample_repeat_count = 0;                  // active sample number of times played
+unsigned sample_repeat_gap = 0;                // active sample gap between repeat plays
+unsigned long sample_repeat_next_start = 0;    // active sample time to play next after gap
 
 // audio osc generators
 // Oscil <table_size, update_rate> oscilName (wavetable)
@@ -68,7 +68,7 @@ AudioOutput_t updateAudio() {
 
 mozziHandler::mozziHandler(regions region)
 {
-  dtmfRegion = RegionConfig(region);
+  mozziRegion = RegionConfig(region);
 
   // init mozzi synth oscillators, starting with 0 Hz (no output)
   startMozzi(CONTROL_RATE);
@@ -80,6 +80,10 @@ mozziHandler::mozziHandler(regions region)
   sample1.setFreq((float) DialAgain1_SAMPLERATE / (float) DialAgain1_NUM_CELLS); // play at the speed it was recorded
   sample2.setFreq((float) DialAgain2_SAMPLERATE / (float) DialAgain2_NUM_CELLS); // play at the speed it was recorded
   sample3.setFreq((float) DialAgain3_SAMPLERATE / (float) DialAgain3_NUM_CELLS); // play at the speed it was recorded
+}
+
+void mozziHandler::changeRegion(regions region){
+  mozziRegion = RegionConfig(region);
 }
 
 void mozziHandler::run() {
@@ -126,13 +130,13 @@ void mozziHandler::playTone(tones tone){
   toneStop(); // ensure anything currently playing is stopped first
   switch(tone){
     case dialtone:
-      return toneStart(dtmfRegion.dial);
+      return toneStart(mozziRegion.dial);
     case ringing:
-      return toneStart(dtmfRegion.ring);
+      return toneStart(mozziRegion.ring);
     case busytone:
-      return toneStart(dtmfRegion.busy);
+      return toneStart(mozziRegion.busy);
     case howler:
-      return toneStart(dtmfRegion.howl);
+      return toneStart(mozziRegion.howl);
   }
 }
 

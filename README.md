@@ -11,9 +11,10 @@ This hobby project is to make a few old phones interactive for my retro room so 
 * [ ] Call one of the other phones on display and talk to whoever answers
 * [ ] Accurately replicate a real phone experience
   * [x] physical ringing
-  * [x] authentic call progress tones and messages
-  * [x] pulse dialing (rotary dialing)
-  * [ ] touch-tone dialing (DTMF)
+  * [x] call progress tones
+  * [x] rotary dialing (pulse dialing)
+  * [X] tone dialing (DTMF)
+  * [ ] automated phone service messages
 
 ## Optional Goals
 * wifi for signaling and comms between phones if ESP32 can handle DAC/ADC simultaneously without noticeable audio problems
@@ -36,46 +37,38 @@ This hobby project is to make a few old phones interactive for my retro room so 
 * pulse dialing detection is working
 * added simulated call connection after dialing a number just to hear the ring and busy sounds (sound chosen by even or odd first dialed digit)
 * improved audio levels using both software tweaks and increasing gain of op-amp
-* detecting tone dialing with [PhoneDTMF](https://github.com/Adrianotiger/phoneDTMF), except it requires too much of the processing loop for anything else to work well (especially audio via Mozzi...see challenges section)
-  * currently using a variable to switch between dialtone or DTMF to make testing easier
+* detecting tone dialing 
+  * software decoding with [PhoneDTMF](https://github.com/Adrianotiger/phoneDTMF) works, except it requires too much of the processing time and chops up the dialtone audio
+  * hardware decoding with [MT8870 module](docs/DTMF%20decoder%20module%20offset%20view.jpg) works great!
+  * currently using a variable to switch between the hardware vs. software decoding (with dialtone disabled if software decoding enabled)
 * specify a number of repeats for a recorded message
 * full sequence of not finishing dialing is pretty realistic: dialtone, "try again" message twice, howler sound for a while, then silence
 * dialing 7 digits will play ringing or busy signal in handset depending on first digit being odd or even
   * this is just a demo until I get real call negotiation working
 
 ## Next Steps
-* documentation
-  * create a schematic for my circuit
-  * add some pictures...I know you want pictures :)
-* call progress recorded messages
-  * need more recordings, maybe need to use MicroSD for storage, but that might be too slow to read from
-  * see if file splitting is actually necessary or if we can have single files (original author split to solve problem on ESP8266)
 * runtime settings adjustable via dialing special codes
   * switching region, toggling DTMF/dialtone, and activating the web server until you hang up
   * make the setting persisted so it can survive reboot and flashing
-* DTMF dialing
-  * decoded in software if possible (currently have trouble with blocking sample detection affecting mozzi badly)
-  * decoded with hardware if software not achievable
+* add filter to block 20Hz ring signal from SLIC's audio out line (mostly to keep it off my external speaker when it's ringing)
+* call progress recorded messages
+  * need more recordings, maybe need to use MicroSD for storage, but that might be too slow to read from
+  * see if file splitting is actually necessary or if we can have single files (original author split to solve problem on ESP8266)
 * RGB LED for status colors & patterns representing all of the call states
 * trunk line via wifi, or wired if wifi affects audio quality
   * could switch to PiZeroW or something if simultaneious ADC/DAC/Wifi is too much for ESP32
   * might be an option to design these modules for a backplane in a single housing and just use wiring between the modules for analog audio (think of it like a local switching office)
-* add filter to block 20Hz ring signal from SLIC's audio out line (mostly to keep it off my external speaker when it's ringing)
+* documentation
+  * create a schematic for my circuit
+  * describe the code
 
 ## Challenges
 * Timing of stopping the ringer when handset taken off-hook is difficult to get "immediate", so there is a brief amount of clicking on the handset when first picked up. 
   * I was able to tweak my debounce logic to skip the debounce period when specifically transitioning from incoming to connected (triggered by going off-hook), which has it down to about 100 milliseconds.
-    * I tried a few other things in code, like pin-interrupt and trying to detect off-hook state at top of loop, but nothing worked. I think we have effectively eliminated all of the ESP32 delay.
-    * Another option might be using hardware and-gate with inverted hook input anded with the ringer output signals, but if the delay is within the SLIC then this won't matter.
   * It seems like the SLIC takes a moment to detect off-hook when the RM pin is high, possibly related to the higher voltage while ringing. I noticed if I leave RM low while ringing the overlap disappears, however we need the RM pin high to actuate a physical bell. 
   * This overlap might be normal, even with a real phone system...just rare for anyone to notice because they don't usually have the earpiece to their ear already when going off-hook. If I find a phone on a real phone system I may try to check this.
-* The SLIC's audio output pin has the physical ringing signal while ringing, likely requiring an isolation mechanism (relay, solid-state relay, other options?)
-  * `not an issue` ~~if the actual ring voltage is present on the SLIC audio out pin we will need to protect the ESP32 with some form of isolation while ringing~~
-  * if we decide to use physical wire for the trunk line we will need to disconnect the SLIC audio out from it while dialing
-  * if we decide to use DTMF signaling over the trunk audio line before connecting the call we will have to use a switching mechanism to isolate the trunk line and shift the ESP32 audio out pin to the trunk or use a different DAC pin for it
-* tried tone dialing in software but the [PhoneDTMF library](https://github.com/Adrianotiger/phoneDTMF) requires too much sample time and it murders mozzi
-  * which is only a problem when trying to detect during dialtone...once detection has started we switch to silence and the detection would be fine
-  * maybe we can find a trick to detect tone dialing is occurring and switch off the dialtone before engaging PhoneDTMF?
+* The SLIC's audio output pin has the 20Hz ringing signal while ringing (at audio level, not high voltage), likely requiring a filter or an isolation mechanism (relay, solid-state relay, other options?)
+* software-DTMF with [PhoneDTMF library](https://github.com/Adrianotiger/phoneDTMF) requires too much sample time and it murders mozzi, and I had stability issues during steady tone presses
 
 ## Notable
 * RM and FR pins on the SLIC are both necessary for rining. The RM pin sets the higher ringing voltage, and the FR pin flip flops the polarity on high and low cycles. Both are definitely needed, although the electronic ringer on my Sony slimline works fine with just FR toggled, the physical bell on the Snoopy phone requires the RM to have enough power to physically move the armature. The FR pin should be toggled at 50% duty cycle at 20Hz with cadence 2s-on/4s-off for US ring.

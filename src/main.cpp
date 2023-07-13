@@ -131,6 +131,7 @@ void modeStart(modes newmode) {
     case call_abandoned:
       break;
     case call_connecting:
+      Serial.print(digits);
       //TODO: implement real connection negotiation; this fake simulation rings if first digit even, or busy if odd
       if(digits[0] % 2== 0)
         modeGo(call_ringing);
@@ -142,6 +143,20 @@ void modeStart(modes newmode) {
       break;
     case call_busy:
       mozzi.playTone(mozzi.busytone);
+      break;
+    case call_operator:
+      //TODO: handle operator simulation
+      break;
+    case system_config:
+      // handle star-codes to change config
+      //TODO: ack & error beeps
+      if(digits[1] == '1'){
+        switch(digits[2]){
+          case '1': return mozzi.changeRegion(region_northAmerica);
+          case '2': return mozzi.changeRegion(region_unitedKingdom);
+        }
+      }
+      modeGo(call_ready); // return to dialtone
       break;
   }
 }
@@ -219,9 +234,15 @@ void digitReceivedCallback(char digit){
   Serial.print(digit);      // debug output show digits as they are received
   digits += digit;          // accumulate the digit
 
-  //TODO: decide when appropriate to "connect" (i.e., another node, simulation or special behavior [config website?])
-  if(digits.length() > 6){  // fake decision to connect
+  if(digits.length() == 1 && digits[0] == '0'){
+    modeGo(call_operator);
+  }else if(digits.length() == 3 && digits[0] == '*'){
+    modeGo(system_config);
+  }else if(digits.length() == 4 && digits.substring(0, 1) == "22"){
+    // pulse dialing can't dial *, so we are using "22" as trigger and normalizing it to * for system_config mode
+    digits = '*' + digits.substring(2, 3);
+    modeGo(system_config);
+  }else if(digits.length() == 7){
     modeGo(call_connecting);
-    Serial.print(digits);
   }
 }

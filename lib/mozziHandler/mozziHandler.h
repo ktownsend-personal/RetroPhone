@@ -19,6 +19,7 @@ class mozziHandler
     };
 
     mozziHandler(regions region);
+    void changeRegion(regions region);
     void playTone(tones tone);
     void playSample(samples sample, byte repeat, unsigned gapTime);
     void run();

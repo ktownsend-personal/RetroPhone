@@ -17,24 +17,28 @@ enum modes {
   call_timeout1,      // play "cannot be completed as dialed" message
   call_timeout2,      // play howler
   call_abandoned,     // silence; we gave up alerting user (maybe go into low power mode?)
-  call_incoming       // physical ringer
+  call_incoming,      // physical ringer
+  call_operator,      // simulate calling the operator
+  system_config       // configuration mode from dialing star-codes
 };
 
-String modeNames[14] = {  // best way I found to translate modes to names for output
-  "idle", 
-  "ready", 
+String modeNames[16] = {  // best way I found to translate modes to names for output
+  "phone idle", 
+  "ready to dial", 
   "pulse dialing", 
   "tone dialing",
-  "connecting", 
-  "busy",
-  "fail",
-  "ringing",
-  "connected",
-  "disconnected",
+  "call connecting", 
+  "destination busy",
+  "call failed",
+  "destination ringing",
+  "call connected",
+  "call disconnected",
   "timeout1",
   "timeout2",
-  "abandoned",
-  "incoming"
+  "call abandoned",
+  "incoming call",
+  "calling operator",
+  "configuring"
 };
 
 modes mode = call_idle;
