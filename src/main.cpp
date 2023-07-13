@@ -108,6 +108,7 @@ void modeStart(modes newmode) {
       ringer.start();
       break;
     case call_ready:
+      digits = "";
       timeoutStart();
       hooker.start();
       // software-DTMF blocks too much to play audio, but hardware-DTMF ok
@@ -148,15 +149,8 @@ void modeStart(modes newmode) {
       //TODO: handle operator simulation
       break;
     case system_config:
-      // handle star-codes to change config
-      //TODO: ack & error beeps
-      if(digits[1] == '1'){
-        switch(digits[2]){
-          case '1': return mozzi.changeRegion(region_northAmerica);
-          case '2': return mozzi.changeRegion(region_unitedKingdom);
-        }
-      }
-      modeGo(call_ready); // return to dialtone
+      configureByNumber(digits);
+      modeGo(call_ready);
       break;
   }
 }
@@ -199,8 +193,8 @@ void modeRun(modes mode){
 
 void modeGo(modes newmode){
   modeStop(mode);
-  modeStart(newmode);
   mode = newmode;
+  modeStart(newmode);
 }
 
 void timeoutStart(){
@@ -221,7 +215,6 @@ void ringCountCallback(int rings){
 
 // callback from both tone and DTMF dailing handlers to signal us when dialing has started so we can reset dialed digits and switch off dialtone
 void dialingStartedCallback(bool isTone){
-  digits = "";
   if(isTone)
     modeGo(call_tone_dialing);
   else
@@ -244,5 +237,22 @@ void digitReceivedCallback(char digit){
     modeGo(system_config);
   }else if(digits.length() == 7){
     modeGo(call_connecting);
+  }
+}
+
+void configureByNumber(String starcode){
+  //TODO: ack & error beeps
+  if(starcode[0] != '*') return;
+  if(starcode[1] == '1'){
+    switch(starcode[2]){
+      case '1': 
+        mozzi.changeRegion(region_northAmerica);
+        Serial.print("region changed to North America");
+        break;
+      case '2': 
+        mozzi.changeRegion(region_unitedKingdom);
+        Serial.print("region changed to United Kingdom");
+        break;
+    }
   }
 }

@@ -61,4 +61,5 @@ void timeoutCheck();
 void ringCountCallback(int);
 void dialingStartedCallback(bool isTone);
 void digitReceivedCallback(char);
+void configureByNumber(String starcode);
 #endif
