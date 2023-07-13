@@ -44,15 +44,17 @@ void setup() {
   Serial.begin(115200);
   auto serialTimeout = millis() + 2000; // wait up to 2 seconds for serial connection
   while (!Serial && millis() < serialTimeout){} // wait for console to connect
+  Serial.println();
+  Serial.println("RetroPhone is starting up...");
 
   // initialize with persisted settings
-  prefs.begin("RetroPhone", false);
-  bool dtmfmode = prefs.getBool("dtmf", false);
-  Serial.printf("DTMF mode %s\n", dtmfmode ? "software" : "hardware");
-  ENABLE_DTMF = dtmfmode;
-  regions r = (regions)prefs.getUInt("region", region_northAmerica);
-  Serial.printf("Region %s\n", r == region_northAmerica ? "North America" : "United Kingdom");
-  mozzi.changeRegion(r);
+  // prefs.begin("RetroPhone", false);
+  // bool dtmfmode = prefs.getBool("dtmf", false);
+  // Serial.printf("DTMF mode %s\n", dtmfmode ? "software" : "hardware");
+  // ENABLE_DTMF = dtmfmode;
+  // regions r = (regions)prefs.getUInt("region", region_northAmerica);
+  // Serial.printf("Region %s\n", r == region_northAmerica ? "North America" : "United Kingdom");
+  // mozzi.changeRegion(r);
   
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
@@ -60,6 +62,7 @@ void setup() {
   dtmfmod.setDigitCallback(digitReceivedCallback);
 
   Serial.println("RetroPhone is ready!");
+  modeStart(mode); // set initial mode
 }
 
 void loop() {
