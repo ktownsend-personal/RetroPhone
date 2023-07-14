@@ -25,8 +25,13 @@ This hobby project is to make a few old phones interactive for my retro room so 
 * status web page, possibly with configurable options
   * could have it run just when on-hook, or maybe only if a special maintenance number is dialed and terminate when phone is hung up again
 
-## Inspiration
-* [Telephone Central Office Simulator](https://youtu.be/qM0ZhSyA6Jw) (video) and [related GitHub repo](https://github.com/GadgetReboot/misc_file_bin/tree/master/2022_11/Telephone_Central_Office_wip) from GadgetReboot
+## Inspiration & Motivation
+* [Telephone Central Office Simulator](https://youtu.be/qM0ZhSyA6Jw) (video) and [related GitHub repo](https://github.com/GadgetReboot/misc_file_bin/tree/master/2022_11/Telephone_Central_Office_wip) from **GadgetReboot**
+I have a great appreciation for GadgetReboot's willingness to collaborate on our similar projects. He graciously filled in a lot of gaps I had on the hardware side, and I still have much to learn. My military electronics training is about 25 years stale now and I never had the benefit of practical engineering of electronic circuits... all theory and no substance once could say.
+* I got my first ESP32 many months ago and it's been sitting patiently on my workbench waiting for me to get around to it. I never even did a flashing LED demo...leave it to me to start out with something complicated!
+* I've been wanting to get back into tinkering with electronics for many, many years. My software career has been great, but I still have that longing to build stuff with real parts. I've loved both computer programming and electronics since I first discovered them as a child...ESP32 is a great way to do both!
+* I like old phones and I've started to grow a small collection. Why not make them do something?
+* When I was around 12 years old I experimented with the house phone line by putting a speaker on it and hearing a dialtone. I was fascinated, and learned how to dial it by making and breaking the connection rapidly to call a friend and discovered he could hear me if I shouted into the speaker. I took a few old phones apart to study their innards and learned a few more things about them in the process. My parents never knew about that, of course! This project has a special connection with that memory.
 
 ## Currently Functional
 * button to trigger incoming call (temporary demo until far enough along to establish calls between two devices)
@@ -39,6 +44,7 @@ This hobby project is to make a few old phones interactive for my retro room so 
   * hardware DTMF decoding with [MT8870 module](https://microcontrollerslab.com/mt8870-dtmf-decoder-module-pinout-interfacing-with-arduino-features/)
   * software DTMF decoding with [PhoneDTMF](https://github.com/Adrianotiger/phoneDTMF) (has severe limitation...see challenges)
 * configuration by dialing star-codes (or 22 instead of * for pulse dialing)
+  * ack & err tone feedback: 1 = success, 2 = invalid
   * region: *11 North America, *12 United Kingdom
   * DTMF decoder: *20 harware, *21 software
 * plays audio sample for "call cannot be completed as dialed" when appropriate; based on work done by [GadgetReboot](https://youtu.be/qM0ZhSyA6Jw)
@@ -47,7 +53,6 @@ This hobby project is to make a few old phones interactive for my retro room so 
 
 ## Next Steps
 * persisted settings to survive reboot and flashing
-* ack & err tones for feedback when configuring by dialing
 * add filter to block 20Hz ring signal from SLIC's audio out line (mostly to keep it off my external speaker when it's ringing)
 * call progress recorded messages
   * need more recordings, maybe need to use MicroSD for storage, but that might be too slow to read from

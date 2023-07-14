@@ -132,7 +132,6 @@ void modeStop(modes oldmode) {
 void modeStart(modes newmode) {
   Serial.printf("%s...", modeNames[newmode].c_str());
 
-  //TODO: I noticed it didn't light blue when answering a ring...look into that
   digitalWrite(PIN_LED, digitalRead(PIN_SHK)); // basic off-hook status; might expand later with addressable RGB
 
   switch(newmode){
