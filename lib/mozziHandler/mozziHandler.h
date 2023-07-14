@@ -11,7 +11,8 @@ class mozziHandler
       dialtone,
       ringing,
       busytone,
-      howler
+      howler,
+      zip
     };
 
     enum samples {
@@ -21,7 +22,7 @@ class mozziHandler
     mozziHandler(regions region);
     void changeRegion(regions region);
     RegionConfig currentRegion();
-    void playTone(tones tone);
+    void playTone(tones tone, byte repeat = 0);
     void playSample(samples sample, byte repeat, unsigned gapTime);
     void run();
     void stop();
@@ -29,7 +30,7 @@ class mozziHandler
   private:
     regions _region;  // control which call progress sounds to generate based on region
     void messageDialAgain(byte repeat, unsigned gapTime);
-    void toneStart(ToneConfig tc);
+    void toneStart(ToneConfig tc, byte repeat = 0);
     void toneStop();
 };
 

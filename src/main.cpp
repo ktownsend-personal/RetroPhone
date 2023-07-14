@@ -262,9 +262,7 @@ void digitReceivedCallback(char digit){
 }
 
 void configureByNumber(String starcode){
-  
-  //TODO: ack & error beeps
-
+  bool success = false;
   if(starcode[0] != '*') return;
   switch(starcode[1]){
     case '1':
@@ -273,11 +271,13 @@ void configureByNumber(String starcode){
           mozzi.changeRegion(region_northAmerica);
           // prefs.putUInt("region", region_northAmerica);
           Serial.print("region changed to North America");
+          success = true;
           break;
         case '2': 
           mozzi.changeRegion(region_unitedKingdom);
           // prefs.putUInt("region", region_unitedKingdom);
           Serial.print("region changed to United Kingdom");
+          success = true;
           break;
       }
       break;
@@ -285,6 +285,8 @@ void configureByNumber(String starcode){
       softwareDTMF = !!(starcode[2] - '0');
       // prefs.putBool("dtmf", softwareDTMF);
       Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
+      success = true;
       break;
   }
+  mozzi.playTone(mozzi.zip, success ? 1 : 2);
 }

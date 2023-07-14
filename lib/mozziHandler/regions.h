@@ -27,6 +27,7 @@ class RegionConfig {
     ToneConfig busy;
     ToneConfig ring;
     ToneConfig howl;
+    ToneConfig zip;
 };
 
 #endif

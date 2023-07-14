@@ -78,6 +78,7 @@ This hobby project is to make a few old phones interactive for my retro room so 
 * would interrupts be useful in this project so we can put the device to sleep when idle, but still wake up for incoming wifi call or off-hook pin?
   * I wonder if the whole state machine could be based on interrupts and avoid having a loop entirely?
 * should probalby have special response for 911 dialing to clearly say it's not a real phone and cannot be used for emergencies
+* real phone system audio ranges from 300 to 3400 Hz, we we can potentially use that to our advantage in our recorded sample quality and digitizing quality
 
 ## Tidbits
 * `while (!Serial){}` to wait for serial connection (example was right after Serial.begin() in setup())

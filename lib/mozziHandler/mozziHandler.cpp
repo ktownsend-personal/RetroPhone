@@ -13,6 +13,7 @@
 #define CONTROL_RATE 64  // Hz, powers of 2 are most reliable
 
 RegionConfig mozziRegion(region_northAmerica); // regional tone defs
+byte tone_repeat_times = 0;                    // active tone times to repeat
 int tone_gain = 1;                             // active tone gain multiplier
 bool tone_cadence_on = false;                  // active tone cadence on/off
 int *tone_cadence_timings;                     // active tone cadence timings; NULL to stop
@@ -96,7 +97,17 @@ void mozziHandler::run() {
   // skip cadence logic until it's transitioning to minimize overhead accessing pointers
   if (tone_cadence_timings != NULL && tone_cadence_index > -1 && millis() > tone_cadence_until) {
     tone_cadence_index++;
-    if (tone_cadence_index > tone_cadence_timings[0]) tone_cadence_index = 1;
+    if (tone_cadence_index > tone_cadence_timings[0]) {
+      // restart cadence cycle
+      tone_cadence_index = 1;
+      // manage repeats; 0 = forever, 1 or more is exact repeats
+      if(tone_repeat_times == 1) {
+        tone_cadence_on = false;
+        return;
+      }else if(tone_repeat_times > 1) {
+        tone_repeat_times--;
+      }
+    }
     tone_cadence_until = millis() + tone_cadence_timings[tone_cadence_index];
     tone_cadence_on = tone_cadence_index % 2 == 1;
   }
@@ -130,7 +141,7 @@ void mozziHandler::stop(){
   toneStop();
 }
 
-void mozziHandler::playTone(tones tone){
+void mozziHandler::playTone(tones tone, byte repeat){
   toneStop(); // ensure anything currently playing is stopped first
   switch(tone){
     case dialtone:
@@ -141,6 +152,8 @@ void mozziHandler::playTone(tones tone){
       return toneStart(mozziRegion.busy);
     case howler:
       return toneStart(mozziRegion.howl);
+    case zip: 
+      return toneStart(mozziRegion.zip, repeat);
   }
 }
 
@@ -161,13 +174,14 @@ void mozziHandler::messageDialAgain(byte repeat, unsigned gapTime) {
   sample1.start();
 }
 
-void mozziHandler::toneStart(ToneConfig tc){
+void mozziHandler::toneStart(ToneConfig tc, byte repeat){
   byte freqCount = tc.freqs[0];
   if(freqCount >= 1) tone1.setFreq(tc.freqs[1]);
   if(freqCount >= 2) tone2.setFreq(tc.freqs[2]);
   if(freqCount >= 3) tone3.setFreq(tc.freqs[3]);
   if(freqCount >= 4) tone4.setFreq(tc.freqs[4]);
 
+  tone_repeat_times = repeat;
   tone_cadence_timings = tc.cadence;  // copy to variable for speed in loop (dereferencing pointers crashes randomly)
   tone_gain = tc.gain;                // copy to variable for speed in loop
   tone_cadence_on = true;             // first cadence is always on
