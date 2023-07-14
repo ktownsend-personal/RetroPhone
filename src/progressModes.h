@@ -42,9 +42,11 @@ String modeNames[16] = {  // best way I found to translate modes to names for ou
 };
 
 modes mode = call_idle;
+modes deferredMode;
+unsigned long deferModeUntil = 0;
 modes lastDebounceValue = call_idle;
 unsigned long lastDebounceTime = 0;
-const unsigned long debounceDelay = 80; // 80ms minimum to ignore pulse dialing on snoopy phone, but 70ms was ok for my sony phone
+const unsigned long debounceDelay = 80;       // 80ms minimum to ignore pulse dialing on snoopy phone, but 70ms was ok for my sony phone
 unsigned long timeoutStarted = 0;
 const unsigned long timeout1Max = 1000 * 30;  // how long to wait for user action
 const unsigned long timeout2Max = 1000 * 60;  // cumulative with timeout1Max; enough time to play message twice and then eventually give up and play howler
@@ -52,6 +54,8 @@ const unsigned long abandonMax = 1000 * 120;  // cumulative with timeout2Max; wh
 
 modes modeDetect();
 bool modeBouncing(modes);
+void deferMode(modes deferMode, unsigned delay);
+void checkDeferredMode();
 void modeStop(modes);
 void modeStart(modes);
 void modeRun(modes);

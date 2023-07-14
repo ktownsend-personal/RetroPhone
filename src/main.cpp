@@ -67,6 +67,7 @@ void setup() {
 
 void loop() {
   modeRun(mode);                        // always run the current mode before modeDetect() because mode can change during modeRun()
+  checkDeferredMode();                  // check if deferred mode ready to activate
   modes newmode = modeDetect();         // check inputs for new mode
   if(modeBouncing(newmode)) return;     // wait for bounce to settle
   if(newmode != mode) modeGo(newmode);  // switch to new mode
@@ -83,6 +84,16 @@ bool modeBouncing(modes newmode) {
   }
   // true = bouncing, false = stable
   return (millis() - lastDebounceTime) < debounceDelay;
+}
+
+void deferMode(modes deferMode, unsigned delay) {
+  deferredMode = deferMode;
+  deferModeUntil = millis() + delay;
+}
+
+void checkDeferredMode() {
+  if(deferModeUntil > 0 && deferModeUntil < millis()) 
+    modeGo(deferredMode);
 }
 
 modes modeDetect() {
@@ -107,6 +118,7 @@ modes modeDetect() {
 
 void modeStop(modes oldmode) {
   Serial.println(" /");
+  deferModeUntil = 0;
   switch(oldmode){
     case call_incoming:
       ringer.stop();
@@ -171,7 +183,6 @@ void modeStart(modes newmode) {
       break;
     case system_config:
       configureByNumber(digits);
-      modeGo(call_ready);
       break;
   }
 }
@@ -289,4 +300,5 @@ void configureByNumber(String starcode){
       break;
   }
   mozzi.playTone(mozzi.zip, success ? 1 : 2);
+  deferMode(call_ready, 1000);
 }

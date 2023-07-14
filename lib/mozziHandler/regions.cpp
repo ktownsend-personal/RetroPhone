@@ -15,7 +15,7 @@ RegionConfig::RegionConfig(regions region){
       howl.cadence   = new int[3]{2, 100, 100};
       howl.gain      = 2; // override gain for howler
       zip.freqs      = new int[2]{1, 440};
-      zip.cadence    = new int[3]{2, 5, 5};
+      zip.cadence    = new int[3]{2, 100, 100};
       break;
     default:
       ringer.freq    = 20;
@@ -30,7 +30,7 @@ RegionConfig::RegionConfig(regions region){
       howl.cadence   = new int[3]{2, 100, 100};
       howl.gain      = 2; // override gain for howler
       zip.freqs      = new int[2]{1, 440};
-      zip.cadence    = new int[3]{2, 5, 5};
+      zip.cadence    = new int[3]{2, 100, 100};
       break;
   }
 }
