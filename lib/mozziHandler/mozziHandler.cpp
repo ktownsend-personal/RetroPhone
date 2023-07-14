@@ -34,6 +34,8 @@ Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> tone3(SIN2048_DATA);
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> tone4(SIN2048_DATA);
 
 //TODO: refactor to allow more recordings with any number of samples; probably move to separate class to manage samples, or add to regions.h if using different recording per region
+//TODO: test merging the 3 samples back into one sample (may need to regenerate the sample data); the splitting GadgetReboot did may have only been needed on ESP8266
+//TODO: try reading samples from files in onboard and external flash memory to see if that's workable because we need a lot more space for samples than we can embed in the app
 
 // use: Sample <table_size, update_rate> SampleName (wavetable)
 Sample <DialAgain1_NUM_CELLS, AUDIO_RATE> sample1(DialAgain1_DATA);
