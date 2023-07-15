@@ -1,18 +1,19 @@
 #include <Arduino.h>
 #include <mozziHandler.h>
-#include <regions.h>
+#include <regionConfig.h>
 #include <MozziGuts.h>
 #include <Oscil.h>                // oscillator template
 #include <Sample.h>               // sample template
 #include <tables/sin2048_int8.h>  // sine table for oscillator
-#include <DialAgain1.h>           // audio sampled from https://www.thisisarecording.com/Joyce-Gordon.html
-#include <DialAgain2.h>           // and converted to .h files with https://sensorium.github.io/Mozzi/doc/html/char2mozzi_8py.html
-#include <DialAgain3.h>
+// #include <DialAgain1.h>           // audio sampled from https://www.thisisarecording.com/Joyce-Gordon.html
+// #include <DialAgain2.h>           // and converted to .h files with https://sensorium.github.io/Mozzi/doc/html/char2mozzi_8py.html
+// #include <DialAgain3.h>
+#include <../samples/DialAgain/DialAgain.h>
 
 // use #define for CONTROL_RATE, not a constant
 #define CONTROL_RATE 64  // Hz, powers of 2 are most reliable
 
-RegionConfig mozziRegion(region_northAmerica); // regional tone defs
+RegionConfig mozziRegion(region_northAmerica); // regional tone defs; default to North America until told otherwise
 byte tone_repeat_times = 0;                    // active tone times to repeat
 int tone_gain = 1;                             // active tone gain multiplier
 bool tone_cadence_on = false;                  // active tone cadence on/off
@@ -38,9 +39,10 @@ Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> tone4(SIN2048_DATA);
 //TODO: try reading samples from files in onboard and external flash memory to see if that's workable because we need a lot more space for samples than we can embed in the app
 
 // use: Sample <table_size, update_rate> SampleName (wavetable)
-Sample <DialAgain1_NUM_CELLS, AUDIO_RATE> sample1(DialAgain1_DATA);
-Sample <DialAgain2_NUM_CELLS, AUDIO_RATE> sample2(DialAgain2_DATA);
-Sample <DialAgain3_NUM_CELLS, AUDIO_RATE> sample3(DialAgain3_DATA);
+// Sample <DialAgain1_NUM_CELLS, AUDIO_RATE> sample1(DialAgain1_DATA);
+// Sample <DialAgain2_NUM_CELLS, AUDIO_RATE> sample2(DialAgain2_DATA);
+// Sample <DialAgain3_NUM_CELLS, AUDIO_RATE> sample3(DialAgain3_DATA);
+Sample <DialAgain_NUM_CELLS, AUDIO_RATE> sampleDialAgain(DialAgain_DATA);
 
 // mozzi function to update controls
 void updateControl() {
@@ -58,20 +60,21 @@ AudioOutput_t updateAudio() {
   if (sample_playing) {
     switch(sample_index){
       case 1:
-        return MonoOutput::from8Bit(sample1.next());
-      case 2:
-        return MonoOutput::from8Bit(sample2.next());
-      case 3:
-        return MonoOutput::from8Bit(sample3.next());
+        return MonoOutput::from8Bit(sampleDialAgain.next());
+      //   return MonoOutput::from8Bit(sample1.next());
+      // case 2:
+      //   return MonoOutput::from8Bit(sample2.next());
+      // case 3:
+      //   return MonoOutput::from8Bit(sample3.next());
     }
   }
 
   return 0;
 }
 
-mozziHandler::mozziHandler(regions region)
+mozziHandler::mozziHandler(RegionConfig region)
 {
-  mozziRegion = RegionConfig(region);
+  mozziRegion = region;
 
   // init mozzi synth oscillators, starting with 0 Hz (no output)
   startMozzi(CONTROL_RATE);
@@ -80,17 +83,14 @@ mozziHandler::mozziHandler(regions region)
   tone3.setFreq(0);
   tone4.setFreq(0);
 
-  sample1.setFreq((float) DialAgain1_SAMPLERATE / (float) DialAgain1_NUM_CELLS); // play at the speed it was recorded
-  sample2.setFreq((float) DialAgain2_SAMPLERATE / (float) DialAgain2_NUM_CELLS); // play at the speed it was recorded
-  sample3.setFreq((float) DialAgain3_SAMPLERATE / (float) DialAgain3_NUM_CELLS); // play at the speed it was recorded
+  // sample1.setFreq((float) DialAgain1_SAMPLERATE / (float) DialAgain1_NUM_CELLS); // play at the speed it was recorded
+  // sample2.setFreq((float) DialAgain2_SAMPLERATE / (float) DialAgain2_NUM_CELLS); // play at the speed it was recorded
+  // sample3.setFreq((float) DialAgain3_SAMPLERATE / (float) DialAgain3_NUM_CELLS); // play at the speed it was recorded
+  sampleDialAgain.setFreq((float) DialAgain_SAMPLERATE / (float) DialAgain_NUM_CELLS); // play at the speed it was recorded
 }
 
-void mozziHandler::changeRegion(regions region){
-  mozziRegion = RegionConfig(region);
-}
-
-RegionConfig mozziHandler::currentRegion(){
-  return mozziRegion;
+void mozziHandler::changeRegion(RegionConfig region){
+  mozziRegion = region;
 }
 
 void mozziHandler::run() {
@@ -116,19 +116,33 @@ void mozziHandler::run() {
 
   // rotate active sample as each one completes
   if (sample_playing) {
+    // if (sample_index == 0 && sample_repeat_next_start < millis()){
+    //   sample_index = 1;
+    //   sample1.start();
+    // }
+    // if (sample_index == 1 && !sample1.isPlaying()) {
+    //   sample_index = 2;
+    //   sample2.start();
+    // }
+    // if (sample_index == 2 && !sample2.isPlaying()) {
+    //   sample_index = 3;
+    //   sample3.start();
+    // }
+    // if (sample_index == 3 && !sample3.isPlaying()) {
+    //   sample_index = 0;
+    //   sample_repeat_count++;
+    //   if(sample_repeat_times > sample_repeat_count) 
+    //     sample_repeat_next_start = millis() + sample_repeat_gap;
+    //   else
+    //     sample_playing = false;
+    // }
     if (sample_index == 0 && sample_repeat_next_start < millis()){
       sample_index = 1;
-      sample1.start();
+      // sample1.start();
+      sampleDialAgain.start();
     }
-    if (sample_index == 1 && !sample1.isPlaying()) {
-      sample_index = 2;
-      sample2.start();
-    }
-    if (sample_index == 2 && !sample2.isPlaying()) {
-      sample_index = 3;
-      sample3.start();
-    }
-    if (sample_index == 3 && !sample3.isPlaying()) {
+    if (sample_index == 1 && !sampleDialAgain.isPlaying()) {
+    // if (sample_index == 1 && !sample1.isPlaying()) {
       sample_index = 0;
       sample_repeat_count++;
       if(sample_repeat_times > sample_repeat_count) 
@@ -173,7 +187,8 @@ void mozziHandler::messageDialAgain(byte repeat, unsigned gapTime) {
   sample_repeat_count = 0;
   sample_playing = true;
   sample_index = 1;
-  sample1.start();
+  // sample1.start();
+  sampleDialAgain.start();
 }
 
 void mozziHandler::toneStart(ToneConfig tc, byte repeat){

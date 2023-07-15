@@ -2,7 +2,7 @@
 #define mozziHandler_h
 
 #include "Arduino.h"
-#include <regions.h>
+#include <regionConfig.h>
 
 class mozziHandler
 {
@@ -19,16 +19,14 @@ class mozziHandler
       dialAgain
     };
 
-    mozziHandler(regions region);
-    void changeRegion(regions region);
-    RegionConfig currentRegion();
+    mozziHandler(RegionConfig region);
+    void changeRegion(RegionConfig region);
     void playTone(tones tone, byte repeat = 0);
     void playSample(samples sample, byte repeat, unsigned gapTime);
     void run();
     void stop();
 
   private:
-    regions _region;  // control which call progress sounds to generate based on region
     void messageDialAgain(byte repeat, unsigned gapTime);
     void toneStart(ToneConfig tc, byte repeat = 0);
     void toneStop();

@@ -31,6 +31,7 @@ bool softwareDTMF = false; // DTMF and Mozzi don't play nice together; true disa
 
 String digits; // this is where we accumulate dialed digits
 auto prefs = Preferences();
+auto region = RegionConfig(region_northAmerica);
 auto ringer = ringHandler(PIN_RM, PIN_FR, CH_FR);
 auto hooker = hookHandler(PIN_SHK, dialingStartedCallback);
 auto dtmfer = dtmfHandler(PIN_AUDIO_IN, dialingStartedCallback);
@@ -137,7 +138,7 @@ void modeStart(modes newmode) {
   switch(newmode){
     case call_incoming:
       //TODO: we may need to move region into a dedicated library instead of inside mozziHandler since it's no longer just mozzi settings
-      ringer.start(mozzi.currentRegion().ringer.freq, mozzi.currentRegion().ringer.cadence);
+      ringer.start(region.ringer.freq, region.ringer.cadence);
       break;
     case call_ready:
       digits = "";
@@ -278,13 +279,15 @@ void configureByNumber(String starcode){
     case '1':
       switch(starcode[2]){
         case '1': 
-          mozzi.changeRegion(region_northAmerica);
+          region = RegionConfig(region_northAmerica);
+          mozzi.changeRegion(region);
           // prefs.putUInt("region", region_northAmerica);
           Serial.print("region changed to North America");
           success = true;
           break;
         case '2': 
-          mozzi.changeRegion(region_unitedKingdom);
+          region = RegionConfig(region_unitedKingdom);
+          mozzi.changeRegion(region);
           // prefs.putUInt("region", region_unitedKingdom);
           Serial.print("region changed to United Kingdom");
           success = true;

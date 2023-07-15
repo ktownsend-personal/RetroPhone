@@ -1,4 +1,4 @@
-#include <regions.h>
+#include <regionConfig.h>
 
 RegionConfig::RegionConfig(regions region){
   switch(region){

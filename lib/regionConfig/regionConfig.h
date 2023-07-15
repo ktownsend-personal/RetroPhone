@@ -1,5 +1,5 @@
-#ifndef regions_h
-#define regions_h
+#ifndef regionConfig_h
+#define regionConfig_h
 
 #include <Arduino.h>
 
