@@ -30,7 +30,7 @@
 bool softwareDTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
 
 String digits; // this is where we accumulate dialed digits
-auto prefs = Preferences(); // Platformio requires partitions.csv file defining at least the nvs partition; not sure if that's also an Arduino requirement
+auto prefs = Preferences();
 auto region = RegionConfig(region_northAmerica);
 auto ringer = ringHandler(PIN_RM, PIN_FR, CH_FR);
 auto hooker = hookHandler(PIN_SHK, dialingStartedCallback);
