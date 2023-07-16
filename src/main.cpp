@@ -28,6 +28,7 @@
 #define PIN_STQ 27          // DTMF active and ready to read
 
 bool softwareDTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
+bool usePrefs = false;     // I'm having trouble getting Preferences.begin() to work... it just hangs
 
 String digits; // this is where we accumulate dialed digits
 auto prefs = Preferences();
@@ -49,13 +50,15 @@ void setup() {
   Serial.println("RetroPhone is starting up...");
 
   // initialize with persisted settings
-  prefs.begin("phone", false);
-  bool dtmfmode = prefs.getBool("dtmf", false);
-  Serial.printf("DTMF mode %s\n", dtmfmode ? "software" : "hardware");
-  softwareDTMF = dtmfmode;
-  regions r = (regions)prefs.getUInt("region", region_northAmerica);
-  Serial.printf("Region %s\n", r == region_northAmerica ? "North America" : "United Kingdom");
-  mozzi.changeRegion(r);
+  if(usePrefs) {
+    prefs.begin("phone", false);
+    bool dtmfmode = prefs.getBool("dtmf", false);
+    Serial.printf("DTMF mode %s\n", dtmfmode ? "software" : "hardware");
+    softwareDTMF = dtmfmode;
+    regions r = (regions)prefs.getUInt("region", region_northAmerica);
+    Serial.printf("Region %s\n", r == region_northAmerica ? "North America" : "United Kingdom");
+    mozzi.changeRegion(r);
+  }
   
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
@@ -281,14 +284,14 @@ void configureByNumber(String starcode){
         case '1': 
           region = RegionConfig(region_northAmerica);
           mozzi.changeRegion(region);
-          prefs.putUInt("region", region_northAmerica);
+          if(usePrefs) prefs.putUInt("region", region_northAmerica);
           Serial.print("region changed to North America");
           success = true;
           break;
         case '2': 
           region = RegionConfig(region_unitedKingdom);
           mozzi.changeRegion(region);
-          prefs.putUInt("region", region_unitedKingdom);
+          if(usePrefs) prefs.putUInt("region", region_unitedKingdom);
           Serial.print("region changed to United Kingdom");
           success = true;
           break;
@@ -296,7 +299,7 @@ void configureByNumber(String starcode){
       break;
     case '2':
       softwareDTMF = !!(starcode[2] - '0');
-      prefs.putBool("dtmf", softwareDTMF);
+      if(usePrefs) prefs.putBool("dtmf", softwareDTMF);
       Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
       success = true;
       break;
