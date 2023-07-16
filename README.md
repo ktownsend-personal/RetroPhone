@@ -44,6 +44,7 @@ I have a great appreciation for GadgetReboot's willingness to collaborate on our
   * hardware DTMF decoding with [MT8870 module](https://microcontrollerslab.com/mt8870-dtmf-decoder-module-pinout-interfacing-with-arduino-features/)
   * software DTMF decoding with [PhoneDTMF](https://github.com/Adrianotiger/phoneDTMF) (has severe limitation...see challenges)
 * configuration by dialing star-codes (or 22 instead of * for pulse dialing)
+  * settings are saved to onboard flash and survive reboot and flashing updates
   * ack & err tone feedback: 1 = success, 2 = invalid
   * region: *11 North America, *12 United Kingdom
   * DTMF decoder: *20 harware, *21 software
@@ -52,7 +53,6 @@ I have a great appreciation for GadgetReboot's willingness to collaborate on our
 * dialing any 7-digit number will play ring or busy sound depending on first digit even or odd (temporary demo until far enough along to establish calls between two devices)
 
 ## Next Steps
-* persisted settings to survive reboot and flashing
 * add filter to block 20Hz ring signal from SLIC's audio out line (mostly to keep it off my external speaker when it's ringing)
 * call progress recorded messages
   * need more recordings, maybe need to use MicroSD for storage, but that might be too slow to read from
@@ -72,6 +72,7 @@ I have a great appreciation for GadgetReboot's willingness to collaborate on our
   * This overlap might be normal, even with a real phone system...just rare for anyone to notice because they don't usually have the earpiece to their ear already when going off-hook. If I find a phone on a real phone system I may try to check this.
 * The SLIC's audio output pin has the 20Hz ringing signal while ringing (at audio level, not high voltage), likely requiring a filter or an isolation mechanism (relay, solid-state relay, other options?)
 * software-DTMF with [PhoneDTMF library](https://github.com/Adrianotiger/phoneDTMF) requires too much sample time and it murders mozzi so it requires not using dialtone, and I had repeating digit issues during steady tone presses
+* Using Preferences.h to save settings was hanging on the prefs.begin() call at startup. I couldn't find anyone else online having this issue, but I eventually figured out it was a timing issue of some sort. A short delay before calling prefs.begin() was needed. A 50ms delay seems sufficient. I occasionally saw hangs when reading values during startup(), so if you see that try increasing the delay. 
 
 ## Notable
 * SHK pin from SLIC bounces a lot, so it requires debounce logic. GadgetReboot noticed it bounces longer when powered 3.3V vs. 5V
@@ -86,7 +87,7 @@ I have a great appreciation for GadgetReboot's willingness to collaborate on our
 * real phone system audio ranges from 300 to 3400 Hz, we we can potentially use that to our advantage in our recorded sample quality and digitizing quality
 
 ## Tidbits
-* `while (!Serial){}` to wait for serial connection (example was right after Serial.begin() in setup())
+* `while (!Serial);` to wait for serial connection (example was right after Serial.begin() in setup())
 * `for (const auto &line : lines){}` enumerate a local array (not pointer to array) [ref](https://luckyresistor.me/2019/07/12/write-less-code-using-the-auto-keyword/)
 * `Serial.printf("..%s..", stringvar.c_str())` to print `String` type with printf because `%s` epxects C style string not `String` object and will garble the value or even crash the app
 * passing arrays to functions, [good explanation](https://stackoverflow.com/a/19894884/8228356)

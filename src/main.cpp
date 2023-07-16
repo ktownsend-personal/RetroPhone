@@ -9,7 +9,9 @@
 
 #define PIN_LED 2           // using onboard LED until I get my addressable RGB
 #define PIN_BTN 12          // external button to initiate ringing
-#define PIN_AUDIO_IN 14     // software DTMF and live audio digitization if we are able to make that work 
+#define PIN_AUDIO_IN 14     // software DTMF and live audio digitization if we are able to make that work
+
+// Mozzi defaults; just defining so I remember
 #define PIN_AUDIO_OUT_L 25  // Mozzi defaults to this
 #define PIN_AUDIO_OUT_R 26  // Mozzi defaults to this
 
@@ -28,50 +30,51 @@
 #define PIN_STQ 27          // DTMF active and ready to read
 
 bool softwareDTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
-bool usePrefs = false;     // I'm having trouble getting Preferences.begin() to work... it just hangs
 
 String digits; // this is where we accumulate dialed digits
-auto prefs = Preferences();
-auto region = RegionConfig(region_northAmerica);
-auto ringer = ringHandler(PIN_RM, PIN_FR, CH_FR);
-auto hooker = hookHandler(PIN_SHK, dialingStartedCallback);
-auto dtmfer = dtmfHandler(PIN_AUDIO_IN, dialingStartedCallback);
+auto prefs   = Preferences();
+auto ringer  = ringHandler(PIN_RM, PIN_FR, CH_FR);
+auto hooker  = hookHandler(PIN_SHK, dialingStartedCallback);
+auto dtmfer  = dtmfHandler(PIN_AUDIO_IN, dialingStartedCallback);
 auto dtmfmod = dtmfModule(PIN_Q1, PIN_Q2, PIN_Q3, PIN_Q4, PIN_STQ, dialingStartedCallback);
-auto mozzi = mozziHandler(region_northAmerica);
+auto region  = RegionConfig(region_northAmerica);
+auto mozzi   = mozziHandler(region);
 
 void setup() {
+  Serial.begin(115200);
+  Serial.println();
+  Serial.println("RetroPhone, by Keith Townsend");
+  
   pinMode(PIN_LED, OUTPUT);
   pinMode(PIN_BTN, INPUT_PULLDOWN);
   pinMode(PIN_SHK, INPUT_PULLUP);
-  Serial.begin(115200);
-  auto serialTimeout = millis() + 2000;         // wait up to 2 seconds for serial connection
-  while (!Serial && millis() < serialTimeout);  // wait for console to connect
-  Serial.println();
-  Serial.println("RetroPhone is starting up...");
 
-  // initialize with persisted settings
-  if(usePrefs) {
-    prefs.begin("phone", false);
-    bool dtmfmode = prefs.getBool("dtmf", false);
-    Serial.printf("DTMF mode %s\n", dtmfmode ? "software" : "hardware");
-    softwareDTMF = dtmfmode;
-    regions r = (regions)prefs.getUInt("region", region_northAmerica);
-    Serial.printf("Region %s\n", r == region_northAmerica ? "North America" : "United Kingdom");
-    mozzi.changeRegion(r);
-  }
-  
+  settingsInit();
+
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
   dtmfer.setDigitCallback(digitReceivedCallback);
   dtmfmod.setDigitCallback(digitReceivedCallback);
 
-  Serial.println("RetroPhone is ready!");
   modeStart(mode); // set initial mode
+}
+
+void settingsInit(){
+  delay(50);  // this delay resolved a timing issue, but not sure what the timing issue actually is (filesystem not ready yet, or some other activity?)
+  prefs.begin("phone", false);
+  bool dtmfmode = prefs.getBool("dtmf", false);
+  Serial.printf("Using %s DTMF detection. Dial *20 for hardware, *21 for software.\n", dtmfmode ? "software" : "hardware");
+  softwareDTMF = dtmfmode;
+  regions r = (regions)prefs.getInt("region", (int)region_northAmerica);
+  Serial.printf("Using %s sounds and ring style. Dial *11 for North America, *12 for United Kingdom.\n", r == region_northAmerica ? "North America" : "United Kingdom");
+  region = RegionConfig(r);
+  mozzi.changeRegion(region);
+  prefs.end();
 }
 
 void loop() {
   modeRun(mode);                        // always run the current mode before modeDetect() because mode can change during modeRun()
-  checkDeferredMode();                  // check if deferred mode ready to activate
+  modeDeferCheck();                     // check if deferred mode ready to activate
   modes newmode = modeDetect();         // check inputs for new mode
   if(modeBouncing(newmode)) return;     // wait for bounce to settle
   if(newmode != mode) modeGo(newmode);  // switch to new mode
@@ -90,12 +93,12 @@ bool modeBouncing(modes newmode) {
   return (millis() - lastDebounceTime) < debounceDelay;
 }
 
-void deferMode(modes deferMode, unsigned delay) {
+void modeDefer(modes deferMode, unsigned delay) {
   deferredMode = deferMode;
   deferModeUntil = millis() + delay;
 }
 
-void checkDeferredMode() {
+void modeDeferCheck() {
   if(deferModeUntil > 0 && deferModeUntil < millis()) 
     modeGo(deferredMode);
 }
@@ -121,7 +124,7 @@ modes modeDetect() {
 }
 
 void modeStop(modes oldmode) {
-  Serial.println(" /");
+  Serial.println(); // end the mode line
   deferModeUntil = 0;
   switch(oldmode){
     case call_incoming:
@@ -284,14 +287,18 @@ void configureByNumber(String starcode){
         case '1': 
           region = RegionConfig(region_northAmerica);
           mozzi.changeRegion(region);
-          if(usePrefs) prefs.putUInt("region", region_northAmerica);
+          prefs.begin("phone", false);
+          prefs.putInt("region", region_northAmerica);
+          prefs.end();
           Serial.print("region changed to North America");
           success = true;
           break;
         case '2': 
           region = RegionConfig(region_unitedKingdom);
           mozzi.changeRegion(region);
-          if(usePrefs) prefs.putUInt("region", region_unitedKingdom);
+          prefs.begin("phone", false);
+          prefs.putInt("region", region_unitedKingdom);
+          prefs.end();
           Serial.print("region changed to United Kingdom");
           success = true;
           break;
@@ -299,11 +306,13 @@ void configureByNumber(String starcode){
       break;
     case '2':
       softwareDTMF = !!(starcode[2] - '0');
-      if(usePrefs) prefs.putBool("dtmf", softwareDTMF);
+      prefs.begin("phone", false);
+      prefs.putBool("dtmf", softwareDTMF);
+      prefs.end();
       Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
       success = true;
       break;
   }
   mozzi.playTone(mozzi.zip, success ? 1 : 2);
-  deferMode(call_ready, 1000);
+  modeDefer(call_ready, 1000);
 }

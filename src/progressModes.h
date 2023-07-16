@@ -52,10 +52,11 @@ const unsigned long timeout1Max = 1000 * 30;  // how long to wait for user actio
 const unsigned long timeout2Max = 1000 * 60;  // cumulative with timeout1Max; enough time to play message twice and then eventually give up and play howler
 const unsigned long abandonMax = 1000 * 120;  // cumulative with timeout2Max; when to give up on user and stop howler
 
-modes modeDetect();
+void settingsInit();
 bool modeBouncing(modes);
-void deferMode(modes deferMode, unsigned delay);
-void checkDeferredMode();
+void modeDefer(modes deferMode, unsigned delay);
+void modeDeferCheck();
+modes modeDetect();
 void modeStop(modes);
 void modeStart(modes);
 void modeRun(modes);
