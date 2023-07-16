@@ -27,6 +27,10 @@ void ringHandler::run(){
   cadenceSince = millis();
   cadenceIndex++;
   if(cadenceIndex > cadenceCount) cadenceIndex = 1;
+  if(cadenceIndex == 1) {
+    ringCount++;
+    counterCallback(ringCount);
+  }
   if(cadenceIndex % 2 == 1) on(); else off();
 }
 
@@ -37,8 +41,6 @@ void ringHandler::stop(){
 void ringHandler::on(){
   digitalWrite(PIN_RM, HIGH);
   ledcWriteTone(CH_FR, RING_FREQ);
-  ringCount++;
-  counterCallback(ringCount);
 }
 
 void ringHandler::off(){
