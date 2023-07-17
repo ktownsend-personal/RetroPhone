@@ -53,7 +53,7 @@ const unsigned long timeout2Max = 1000 * 60;  // cumulative with timeout1Max; en
 const unsigned long abandonMax = 1000 * 120;  // cumulative with timeout2Max; when to give up on user and stop howler
 
 void settingsInit();
-void testDTMF(String digits, int toneTime, int gapTime);
+bool testDTMF_module(String digits, int toneTime, int gapTime);
 bool modeBouncing(modes);
 void modeDefer(modes deferMode, unsigned delay);
 void modeDeferCheck();

@@ -7,11 +7,11 @@ dtmfModule::dtmfModule(byte pinQ1, byte pinQ2, byte pinQ3, byte pinQ4, byte pinS
   Q4 = pinQ4;
   STQ = pinSTQ;
   dialingStartedCallback = callback;
-  pinMode(Q1, INPUT);
-  pinMode(Q2, INPUT);
-  pinMode(Q3, INPUT);
-  pinMode(Q4, INPUT);
-  pinMode(STQ, INPUT);
+  pinMode(Q1, INPUT); // I have these on input-only pins, so they don't have pullup/pulldown option
+  pinMode(Q2, INPUT); // I have these on input-only pins, so they don't have pullup/pulldown option
+  pinMode(Q3, INPUT); // I have these on input-only pins, so they don't have pullup/pulldown option
+  pinMode(Q4, INPUT); // I have these on input-only pins, so they don't have pullup/pulldown option
+  pinMode(STQ, INPUT_PULLDOWN); // need this pulled down so we can detect low when DTMF module isn't connected
 }
 
 void dtmfModule::setDigitCallback(void (*callback)(char)) {

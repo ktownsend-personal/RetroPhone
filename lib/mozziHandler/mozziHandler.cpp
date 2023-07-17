@@ -165,9 +165,9 @@ void mozziHandler::playSample(samples sample, byte iterations, unsigned gapTime)
   }
 }
 
-void mozziHandler::playDTMF(char digit, int length) {
+void mozziHandler::playDTMF(char digit, int length, int gap) {
   auto dtmf_tone = ToneConfig();
-  int cadence[3]{2, length, 50};
+  int cadence[3]{2, length, gap};
   dtmf_tone.cadence = cadence;
   int freqs[3]{2, 0, 0};
   dtmf_tone.freqs = freqs;

@@ -51,18 +51,22 @@ void setup() {
 
   settingsInit();
 
+  bool dtmfHardwareExists = testDTMF_module("1234567890*#ABCD", 70, 50);
+  if(!dtmfHardwareExists && !softwareDTMF) {
+    softwareDTMF = true;
+    Serial.println("Hardware DTMF module not detedted. Auto-switching to software DTMF.");
+  }
+
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
   dtmfer.setDigitCallback(digitReceivedCallback);
   dtmfmod.setDigitCallback(digitReceivedCallback);
 
-  testDTMF("1234567890*#ABCD", 70, 50);
-
   modeStart(mode); // set initial mode
 }
 
-void testDTMF(String digits, int toneTime, int gapTime){
-  // testing DTMF module if we play tones ourselves
+bool testDTMF_module(String digits, int toneTime, int gapTime){
+  // testing DTMF module by playing tones ourselves and checking pin responses
   int countReads = 0;
   int countMatch = 0;
   int minDetectionTime = 999999999;
@@ -77,7 +81,7 @@ void testDTMF(String digits, int toneTime, int gapTime){
     auto gapUntil = toneUntil + gapTime;
     auto readFrom = start + 10;
     bool checked = false;
-    mozzi.playDTMF(x, toneTime);
+    mozzi.playDTMF(x, toneTime, gapTime);
     while(millis() < toneUntil) {
       mozzi.run();
       if(!checked && readFrom < millis() && digitalRead(PIN_STQ)) {
@@ -100,6 +104,7 @@ void testDTMF(String digits, int toneTime, int gapTime){
   Serial.printf("Testing DTMF module, detected> %s\n", reads.c_str());
   Serial.printf("Testing DTMF module, results>  %d/%d read, %d/%d accuracy, %dms to %dms detection time", countReads, digits.length(), countMatch, digits.length(), minDetectionTime, maxDetectionTime);
   Serial.println();
+  return countReads > 0; // simply returning whether we detected the module
 }
 
 void settingsInit(){
