@@ -12,7 +12,8 @@ class mozziHandler
       ringing,
       busytone,
       howler,
-      zip
+      zip,
+      err
     };
 
     enum samples {
@@ -21,14 +22,14 @@ class mozziHandler
 
     mozziHandler(RegionConfig region);
     void changeRegion(RegionConfig region);
-    void playTone(tones tone, byte repeat = 0);
-    void playSample(samples sample, byte repeat, unsigned gapTime);
+    void playTone(tones tone, byte iterations = 0);
+    void playSample(samples sample, byte iterations, unsigned gapTime);
     void run();
     void stop();
 
   private:
-    void messageDialAgain(byte repeat, unsigned gapTime);
-    void toneStart(ToneConfig tc, byte repeat = 0);
+    void messageDialAgain(byte iterations, unsigned gapTime);
+    void toneStart(ToneConfig tc, byte iterations = 0);
     void toneStop();
 };
 

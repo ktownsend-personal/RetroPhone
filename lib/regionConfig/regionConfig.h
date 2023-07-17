@@ -28,6 +28,7 @@ class RegionConfig {
     ToneConfig ring;
     ToneConfig howl;
     ToneConfig zip;
+    ToneConfig err;
 };
 
 #endif

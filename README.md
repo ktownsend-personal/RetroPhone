@@ -79,12 +79,14 @@ I have a great appreciation for GadgetReboot's willingness to collaborate on our
 * RM and FR pins on the SLIC are both necessary for rining. The RM pin sets the higher ringing voltage, and the FR pin flip flops the polarity on high and low cycles. Both are definitely needed, although the electronic ringer on my Sony slimline works fine with just FR toggled, the physical bell on the Snoopy phone requires the RM to have enough power to physically move the armature. The FR pin should be toggled at 50% duty cycle at 20Hz with cadence 2s-on/4s-off for US ring.
 * When using PhoneDTMF library, we seem to need 300 sample count and 6000 frequency to avoid detection dropouts while a button is pressed (which causes repeated numbers)
   * I tried 50ms debounce and still got gaps, and since 50ms tone and 50ms space are the standard that I saw someplace we probably shouldn't debounce longer
+* phones only use frequencies 300Hz to 3400Hz, but somehow we actually hear lower tones due to [this phenomenon](https://blogs.scientificamerican.com/roots-of-unity/your-telephone-is-lying-to-you-about-sounds/)
 
 ## Thoughts
 * would interrupts be useful in this project so we can put the device to sleep when idle, but still wake up for incoming wifi call or off-hook pin?
   * I wonder if the whole state machine could be based on interrupts and avoid having a loop entirely?
 * should probalby have special response for 911 dialing to clearly say it's not a real phone and cannot be used for emergencies
 * real phone system audio ranges from 300 to 3400 Hz, we we can potentially use that to our advantage in our recorded sample quality and digitizing quality
+* would it be useful to use an IO pin to control power to the hardware DTMF decoder to reduce power consumption?
 
 ## Tidbits
 * `while (!Serial);` to wait for serial connection (example was right after Serial.begin() in setup())

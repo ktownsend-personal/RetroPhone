@@ -12,7 +12,7 @@
 #define CONTROL_RATE 64  // Hz, powers of 2 are most reliable
 
 RegionConfig mozziRegion(region_northAmerica); // regional tone defs; default to North America until told otherwise
-byte tone_repeat_times = 0;                    // active tone times to repeat
+byte tone_iterations = 0;                      // active tone iterations; 0 = forever
 int tone_gain = 1;                             // active tone gain multiplier
 bool tone_cadence_on = false;                  // active tone cadence on/off
 int *tone_cadence_timings;                     // active tone cadence timings; NULL to stop
@@ -20,10 +20,9 @@ byte tone_cadence_index = 0;                   // active tone cadence timing ind
 unsigned long tone_cadence_until;              // active tone cadence timing expiration
 bool sample_playing = false;                   // whether a sound sample is being played or not
 byte sample_index = 0;                         // active sample segment index
-byte sample_repeat_times = 1;                  // active sample times to play
-byte sample_repeat_count = 0;                  // active sample number of times played
-unsigned sample_repeat_gap = 0;                // active sample gap between repeat plays
-unsigned long sample_repeat_next_start = 0;    // active sample time to play next after gap
+byte sample_iterations = 1;                    // active sample iterations; 0 = forever
+unsigned sample_gap = 0;                       // active sample gap between iterations
+unsigned long sample_gap_until = 0;            // active sample when to start next iteration after gap
 
 // audio osc generators
 // Oscil <table_size, update_rate> oscilName (wavetable)
@@ -97,12 +96,12 @@ void mozziHandler::run() {
     if (tone_cadence_index > tone_cadence_timings[0]) {
       // restart cadence cycle
       tone_cadence_index = 1;
-      // manage repeats; 0 = forever, 1 or more is exact repeats
-      if(tone_repeat_times == 1) {
+      // manage iterations of full cadence cycle; 0 = forever
+      if(tone_iterations == 1) {
         tone_cadence_on = false;
         return;
-      }else if(tone_repeat_times > 1) {
-        tone_repeat_times--;
+      }else if(tone_iterations > 1) {
+        tone_iterations--;
       }
     }
     tone_cadence_until = millis() + tone_cadence_timings[tone_cadence_index];
@@ -111,7 +110,7 @@ void mozziHandler::run() {
 
   // rotate active sample as each one completes
   if (sample_playing) {
-    if (sample_index == 0 && sample_repeat_next_start < millis()){
+    if (sample_index == 0 && sample_gap_until < millis()){
       sample_index = 1;
       sample1.start();
     }
@@ -124,12 +123,14 @@ void mozziHandler::run() {
       sample3.start();
     }
     if (sample_index == 3 && !sample3.isPlaying()) {
-      sample_index = 0;
-      sample_repeat_count++;
-      if(sample_repeat_times > sample_repeat_count) 
-        sample_repeat_next_start = millis() + sample_repeat_gap;
-      else
+      // manage iterations; 0 = forever
+      if(sample_iterations == 1) {
         sample_playing = false;
+      } else {
+        sample_iterations--;
+        sample_index = 0;
+        sample_gap_until = millis() + sample_gap;
+      }
     }
   }
 }
@@ -138,7 +139,7 @@ void mozziHandler::stop(){
   toneStop();
 }
 
-void mozziHandler::playTone(tones tone, byte repeat){
+void mozziHandler::playTone(tones tone, byte iterations){
   toneStop(); // ensure anything currently playing is stopped first
   switch(tone){
     case dialtone:
@@ -150,42 +151,43 @@ void mozziHandler::playTone(tones tone, byte repeat){
     case howler:
       return toneStart(mozziRegion.howl);
     case zip: 
-      return toneStart(mozziRegion.zip, repeat);
+      return toneStart(mozziRegion.zip, iterations);
+    case err:
+      return toneStart(mozziRegion.err, iterations);
   }
 }
 
-void mozziHandler::playSample(samples sample, byte repeat, unsigned gapTime) {
+void mozziHandler::playSample(samples sample, byte iterations, unsigned gapTime) {
   toneStop(); // ensure anything currently playing is stopped first
   switch(sample){
     case dialAgain:
-      return messageDialAgain(repeat, gapTime);
+      return messageDialAgain(iterations, gapTime);
   }
 }
 
-void mozziHandler::messageDialAgain(byte repeat, unsigned gapTime) {
-  sample_repeat_times = repeat;
-  sample_repeat_gap = gapTime;
-  sample_repeat_count = 0;
+void mozziHandler::messageDialAgain(byte iterations, unsigned gapTime) {
+  sample_iterations = iterations;
+  sample_gap = gapTime;
   sample_playing = true;
   sample_index = 1;
   sample1.start();
 }
 
-void mozziHandler::toneStart(ToneConfig tc, byte repeat){
+void mozziHandler::toneStart(ToneConfig tc, byte iterations){
   byte freqCount = tc.freqs[0];
   if(freqCount >= 1) tone1.setFreq(tc.freqs[1]);
   if(freqCount >= 2) tone2.setFreq(tc.freqs[2]);
   if(freqCount >= 3) tone3.setFreq(tc.freqs[3]);
   if(freqCount >= 4) tone4.setFreq(tc.freqs[4]);
 
-  tone_repeat_times = repeat;
-  tone_cadence_timings = tc.cadence;  // copy to variable for speed in loop (dereferencing pointers crashes randomly)
-  tone_gain = tc.gain;                // copy to variable for speed in loop
-  tone_cadence_on = true;             // first cadence is always on
-  if(tc.cadence[0] < 1){              // first index is the count of cadence timings (required to be 0 when no cadence)
-    tone_cadence_index = -1;          // -1 skips cadence handling logic in run()
+  tone_iterations = iterations;
+  tone_cadence_timings = tc.cadence;               // copy to variable for speed in loop (dereferencing pointers crashes randomly)
+  tone_gain = tc.gain;                             // copy to variable for speed in loop
+  tone_cadence_on = true;                          // first cadence is always on
+  if(tc.cadence[0] < 1){                           // first index is the count of cadence timings (required to be 0 when no cadence)
+    tone_cadence_index = -1;                       // -1 skips cadence handling logic in run()
   } else {
-    tone_cadence_index = 1;           // first cadence index (position 0 is the count, so start at 1)
+    tone_cadence_index = 1;                        // first cadence index (position 0 is the count, so start at 1)
     tone_cadence_until = millis() + tc.cadence[1]; // pre-calculating expiration avoids having to do the math on every cycle
   };
 }

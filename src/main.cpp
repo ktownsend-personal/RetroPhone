@@ -143,7 +143,6 @@ void modeStart(modes newmode) {
 
   switch(newmode){
     case call_incoming:
-      //TODO: we may need to move region into a dedicated library instead of inside mozziHandler since it's no longer just mozzi settings
       ringer.start(region.ringer.freq, region.ringer.cadence);
       break;
     case call_ready:
@@ -313,6 +312,13 @@ void configureByNumber(String starcode){
       success = true;
       break;
   }
-  mozzi.playTone(mozzi.zip, success ? 1 : 2);
+
+  if(success) {
+    mozzi.playTone(mozzi.zip, 1);
+  } else {
+    mozzi.playTone(mozzi.err, 2);
+    Serial.print("unrecognized star-code");
+  }
+
   modeDefer(call_ready, 1000);
 }
