@@ -54,7 +54,7 @@ void setup() {
   bool dtmfHardwareExists = testDTMF_module("1234567890*#ABCD", 70, 50);
   if(!dtmfHardwareExists && !softwareDTMF) {
     softwareDTMF = true;
-    Serial.println("Hardware DTMF module not detedted. Auto-switching to software DTMF.");
+    Serial.println("Hardware DTMF module not detected. Auto-switching to software DTMF.");
   }
 
   ringer.setCounterCallback(ringCountCallback);
@@ -69,7 +69,7 @@ bool testDTMF_module(String digits, int toneTime, int gapTime){
   // testing DTMF module by playing tones ourselves and checking pin responses
   int countReads = 0;
   int countMatch = 0;
-  int minDetectionTime = 999999999;
+  int minDetectionTime = 0;
   int maxDetectionTime = 0;
   String reads;
   Serial.print("Testing DTMF module, sending>  ");
@@ -79,7 +79,7 @@ bool testDTMF_module(String digits, int toneTime, int gapTime){
     auto start = millis();
     auto toneUntil = start + toneTime;
     auto gapUntil = toneUntil + gapTime;
-    auto readFrom = start + 10;
+    auto readFrom = start + 20;
     bool checked = false;
     mozzi.playDTMF(x, toneTime, gapTime);
     while(millis() < toneUntil) {
@@ -88,8 +88,8 @@ bool testDTMF_module(String digits, int toneTime, int gapTime){
         checked = true;
         countReads++;
         auto detectionTime = millis() - start;
-        if(detectionTime < minDetectionTime) minDetectionTime = detectionTime;
-        if(detectionTime > maxDetectionTime) maxDetectionTime = detectionTime;
+        if(detectionTime < minDetectionTime || minDetectionTime == 0) minDetectionTime = detectionTime;
+        if(detectionTime > maxDetectionTime || maxDetectionTime == 0) maxDetectionTime = detectionTime;
         byte tone = 0x00 | (digitalRead(PIN_Q1) << 0) | (digitalRead(PIN_Q2) << 1) | (digitalRead(PIN_Q3) << 2) | (digitalRead(PIN_Q4) << 3);
         char digit = dtmfmod.tone2char(tone);
         reads += digit ? digit : '_';

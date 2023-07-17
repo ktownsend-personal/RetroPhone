@@ -11,7 +11,7 @@ dtmfModule::dtmfModule(byte pinQ1, byte pinQ2, byte pinQ3, byte pinQ4, byte pinS
   pinMode(Q2, INPUT); // I have these on input-only pins, so they don't have pullup/pulldown option
   pinMode(Q3, INPUT); // I have these on input-only pins, so they don't have pullup/pulldown option
   pinMode(Q4, INPUT); // I have these on input-only pins, so they don't have pullup/pulldown option
-  pinMode(STQ, INPUT_PULLDOWN); // need this pulled down so we can detect low when DTMF module isn't connected
+  pinMode(STQ, INPUT_PULLUP); // need this pulled up so we can detect low when DTMF module isn't connected (note: must ground the pin when not connected)
 }
 
 void dtmfModule::setDigitCallback(void (*callback)(char)) {
