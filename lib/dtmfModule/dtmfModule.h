@@ -10,6 +10,9 @@ class dtmfModule {
     void start();
     void run();
 
+    // make private after done testing
+    char tone2char(byte tone);
+
   private:
     byte Q1;
     byte Q2;
@@ -18,11 +21,8 @@ class dtmfModule {
     byte STQ;
     bool newDTMF;
     byte currentDTMF;
-    unsigned long leadingEdgeTime;
-    unsigned long trailingEdgeTime;
     void (*dialingStartedCallback)(bool);
     void (*digitReceivedCallback)(char);
-    char tone2char(byte tone);
 };
 
 #endif

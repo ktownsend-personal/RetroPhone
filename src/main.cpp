@@ -56,7 +56,49 @@ void setup() {
   dtmfer.setDigitCallback(digitReceivedCallback);
   dtmfmod.setDigitCallback(digitReceivedCallback);
 
+  testDTMF("1234567890*#", 70, 50);
+
   modeStart(mode); // set initial mode
+}
+
+void testDTMF(String digits, int toneTime, int gapTime){
+  // testing DTMF module if we play tones ourselves
+  int countReads = 0;
+  int countMatch = 0;
+  int sumDetectionTime = 0;
+  int minDetectionTime = 999999999;
+  int maxDetectionTime = 0;
+  Serial.print("Testing DTMF module: ");
+  for(char x : digits){
+    if(x == 0) break;
+    Serial.print(x);
+    auto start = millis();
+    auto toneUntil = start + toneTime;
+    auto gapUntil = toneUntil + gapTime;
+    auto readFrom = start + 20;
+    bool checked = false;
+    mozzi.playDTMF(x, toneTime);
+    while(millis() < toneUntil) {
+      mozzi.run();
+      if(!checked && readFrom < millis() && digitalRead(PIN_STQ)) {
+        checked = true;
+        countReads++;
+        auto detectionTime = millis() - start;
+        sumDetectionTime+= detectionTime;
+        if(detectionTime < minDetectionTime) minDetectionTime = detectionTime;
+        if(detectionTime > maxDetectionTime) maxDetectionTime = detectionTime;
+        byte tone = 0x00 | (digitalRead(PIN_Q1) << 0) | (digitalRead(PIN_Q2) << 1) | (digitalRead(PIN_Q3) << 2) | (digitalRead(PIN_Q4) << 3);
+        char digit = dtmfmod.tone2char(tone);
+        if(digit == x) countMatch++;
+        Serial.printf("[%c],", digit);
+      }
+    }
+    while(millis() < gapUntil){
+      mozzi.run();
+    }
+  }
+  Serial.printf(" => reads: %d/%d, accuracy: %d/%d, min/max/avg time to read: %dms/%dms/%dms", countReads, digits.length(), countMatch, digits.length(), minDetectionTime, maxDetectionTime, sumDetectionTime/countReads);
+  Serial.println();
 }
 
 void settingsInit(){

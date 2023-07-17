@@ -24,6 +24,7 @@ class mozziHandler
     void changeRegion(RegionConfig region);
     void playTone(tones tone, byte iterations = 0);
     void playSample(samples sample, byte iterations, unsigned gapTime);
+    void playDTMF(char digit, int length);
     void run();
     void stop();
 

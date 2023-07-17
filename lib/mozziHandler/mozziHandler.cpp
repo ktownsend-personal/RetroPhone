@@ -165,6 +165,81 @@ void mozziHandler::playSample(samples sample, byte iterations, unsigned gapTime)
   }
 }
 
+void mozziHandler::playDTMF(char digit, int length) {
+  auto dtmf_tone = ToneConfig();
+  int cadence[3]{2, length, 50};
+  dtmf_tone.cadence = cadence;
+  int freqs[3]{2, 0, 0};
+  dtmf_tone.freqs = freqs;
+  switch(digit){
+    case '1':
+      dtmf_tone.freqs[1] = 697;
+      dtmf_tone.freqs[2] = 1209;
+      break;
+    case '2':
+      dtmf_tone.freqs[1] = 697;
+      dtmf_tone.freqs[2] = 1336;
+      break;
+    case '3':
+      dtmf_tone.freqs[1] = 697;
+      dtmf_tone.freqs[2] = 1477;
+      break;
+    case 'A':
+      dtmf_tone.freqs[1] = 697;
+      dtmf_tone.freqs[2] = 1633;
+      break;
+    case '4':
+      dtmf_tone.freqs[1] = 770;
+      dtmf_tone.freqs[2] = 1209;
+      break;
+    case '5':
+      dtmf_tone.freqs[1] = 770;
+      dtmf_tone.freqs[2] = 1336;
+      break;
+    case '6':
+      dtmf_tone.freqs[1] = 770;
+      dtmf_tone.freqs[2] = 1477;
+      break;
+    case 'B':
+      dtmf_tone.freqs[1] = 770;
+      dtmf_tone.freqs[2] = 1633;
+      break;
+    case '7':
+      dtmf_tone.freqs[1] = 852;
+      dtmf_tone.freqs[2] = 1209;
+      break;
+    case '8':
+      dtmf_tone.freqs[1] = 852;
+      dtmf_tone.freqs[2] = 1336;
+      break;
+    case '9':
+      dtmf_tone.freqs[1] = 852;
+      dtmf_tone.freqs[2] = 1477;
+      break;
+    case 'C':
+      dtmf_tone.freqs[1] = 852;
+      dtmf_tone.freqs[2] = 1633;
+      break;
+    case '*':
+      dtmf_tone.freqs[1] = 941;
+      dtmf_tone.freqs[2] = 1209;
+      break;
+    case '0':
+      dtmf_tone.freqs[1] = 941;
+      dtmf_tone.freqs[2] = 1336;
+      break;
+    case '#':
+      dtmf_tone.freqs[1] = 941;
+      dtmf_tone.freqs[2] = 1477;
+      break;
+    case 'D':
+      dtmf_tone.freqs[1] = 941;
+      dtmf_tone.freqs[2] = 1633;
+      break;
+  }
+  toneStart(dtmf_tone, 1);
+}
+
 void mozziHandler::messageDialAgain(byte iterations, unsigned gapTime) {
   sample_iterations = iterations;
   sample_gap = gapTime;

@@ -32,19 +32,11 @@ void dtmfModule::run(){
     byte tone = 0x00 | (digitalRead(Q1) << 0) | (digitalRead(Q2) << 1) | (digitalRead(Q3) << 2) | (digitalRead(Q4) << 3);
     if(tone != currentDTMF) {
       currentDTMF = tone;
-
-      // measuring space time
-      // leadingEdgeTime = millis();
-      // Serial.printf("<space=%dms>", leadingEdgeTime - trailingEdgeTime);
     }
   } else if(currentDTMF > 0) {
     byte digit = tone2char(currentDTMF);
     if(digit != ' ') digitReceivedCallback(tone2char(currentDTMF));
     currentDTMF = 0;
-
-    // measuring tone time
-    // trailingEdgeTime = millis();
-    // Serial.printf("<tone=%dms>", trailingEdgeTime - leadingEdgeTime);
   }
 }
 
