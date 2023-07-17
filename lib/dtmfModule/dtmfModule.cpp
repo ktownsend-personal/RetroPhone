@@ -54,6 +54,10 @@ char dtmfModule::tone2char(byte tone){
     case 0x0A: return '0';
     case 0x0B: return '*';
     case 0x0C: return '#';
-    default: return ' '; // space means invalid value
+    case 0x0D: return 'A';
+    case 0x0E: return 'B';
+    case 0x0F: return 'C';
+    case 0x00: return 'D';  // NOTE that D is 0x00 because 4 bits can't represent 0x10, which effectively means we have no "invalid" scenario
+    default: return ' ';    // space means invalid value
   }
 }
