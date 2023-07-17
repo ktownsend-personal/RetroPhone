@@ -1,7 +1,7 @@
 #ifndef dtmfmod_h
 #define dtmfmod_h
 
-#include <Arduino.h>
+#include "Arduino.h"
 
 class dtmfModule {
   public:

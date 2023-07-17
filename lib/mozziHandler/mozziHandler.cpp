@@ -1,13 +1,13 @@
-#include <Arduino.h>
-#include <mozziHandler.h>
-#include <regionConfig.h>
-#include <MozziGuts.h>
-#include <Oscil.h>                            // oscillator template
-#include <Sample.h>                           // sample template
-#include <tables/sin2048_int8.h>              // sine table for oscillator
-#include <../samples/DialAgain/DialAgain1.h>  // audio sampled from https://www.thisisarecording.com/Joyce-Gordon.html
-#include <../samples/DialAgain/DialAgain2.h>  // and converted to .h files with https://sensorium.github.io/Mozzi/doc/html/char2mozzi_8py.html
-#include <../samples/DialAgain/DialAgain3.h>  
+#include "Arduino.h"
+#include "mozziHandler.h"
+#include "regionConfig.h"
+#include "MozziGuts.h"
+#include "Oscil.h"                            // oscillator template
+#include "Sample.h"                           // sample template
+#include "tables/sin2048_int8.h"              // sine table for oscillator
+#include "../samples/DialAgain/DialAgain1.h"  // audio sampled from https://www.thisisarecording.com/Joyce-Gordon.html
+#include "../samples/DialAgain/DialAgain2.h"  // and converted to .h files with https://sensorium.github.io/Mozzi/doc/html/char2mozzi_8py.html
+#include "../samples/DialAgain/DialAgain3.h"  
 // use #define for CONTROL_RATE, not a constant
 #define CONTROL_RATE 64  // Hz, powers of 2 are most reliable
 

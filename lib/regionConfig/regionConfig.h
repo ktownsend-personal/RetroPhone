@@ -1,7 +1,7 @@
 #ifndef regionConfig_h
 #define regionConfig_h
 
-#include <Arduino.h>
+#include "Arduino.h"
 
 enum regions {
   region_northAmerica,

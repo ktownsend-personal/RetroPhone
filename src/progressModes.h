@@ -1,7 +1,7 @@
 #ifndef progressModes_h
 #define progressModes_h
 
-#include <Arduino.h>
+#include "Arduino.h"
 
 enum modes {
   call_idle,          // waiting for incoming or lift handset

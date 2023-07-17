@@ -1,4 +1,4 @@
-#include <hookHandler.h>
+#include "hookHandler.h"
 
 hookHandler::hookHandler(unsigned pinSHK, void (*callback)(bool)) {
   PIN = pinSHK;

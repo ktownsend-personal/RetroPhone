@@ -1,7 +1,7 @@
 #ifndef toneHandler_h
 #define toneHandler_h
 
-#include <Arduino.h>
+#include "Arduino.h"
 
 class toneHandler {
   public:
