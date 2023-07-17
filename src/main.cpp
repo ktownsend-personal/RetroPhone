@@ -65,7 +65,6 @@ void testDTMF(String digits, int toneTime, int gapTime){
   // testing DTMF module if we play tones ourselves
   int countReads = 0;
   int countMatch = 0;
-  int sumDetectionTime = 0;
   int minDetectionTime = 999999999;
   int maxDetectionTime = 0;
   String reads;
@@ -85,7 +84,6 @@ void testDTMF(String digits, int toneTime, int gapTime){
         checked = true;
         countReads++;
         auto detectionTime = millis() - start;
-        sumDetectionTime+= detectionTime;
         if(detectionTime < minDetectionTime) minDetectionTime = detectionTime;
         if(detectionTime > maxDetectionTime) maxDetectionTime = detectionTime;
         byte tone = 0x00 | (digitalRead(PIN_Q1) << 0) | (digitalRead(PIN_Q2) << 1) | (digitalRead(PIN_Q3) << 2) | (digitalRead(PIN_Q4) << 3);
@@ -100,7 +98,7 @@ void testDTMF(String digits, int toneTime, int gapTime){
   }
   Serial.println();
   Serial.printf("Testing DTMF module, detected> %s\n", reads.c_str());
-  Serial.printf("Testing DTMF module, results>  %d/%d read, %d/%d accuracy, %dms/%dms/%dms min/max/avg detection time", countReads, digits.length(), countMatch, digits.length(), minDetectionTime, maxDetectionTime, sumDetectionTime/countReads);
+  Serial.printf("Testing DTMF module, results>  %d/%d read, %d/%d accuracy, %dms to %dms detection time", countReads, digits.length(), countMatch, digits.length(), minDetectionTime, maxDetectionTime);
   Serial.println();
 }
 
