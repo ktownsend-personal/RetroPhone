@@ -7,11 +7,9 @@ class dtmfModule {
   public:
     dtmfModule(byte pinQ1, byte pinQ2, byte pinQ3, byte pinQ4, byte pinSTQ, void (*callback)(bool));
     void setDigitCallback(void (*callback)(char));
+    char tone2char(byte tone);
     void start();
     void run();
-
-    // make private after done testing
-    char tone2char(byte tone);
 
   private:
     byte Q1;

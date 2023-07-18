@@ -51,11 +51,17 @@ void setup() {
 
   settingsInit();
 
-  bool dtmfHardwareExists = testDTMF_module("1234567890*#ABCD", 40, 40);
+  // DTMF module present?
+  bool dtmfHardwareExists = testDTMF_module(40, 40, true);
   if(!dtmfHardwareExists && !softwareDTMF) {
     softwareDTMF = true;
     Serial.println("Hardware DTMF module not detected. Auto-switching to software DTMF.");
-  }
+  };
+  // DTMF module speed test
+  if(dtmfHardwareExists) {
+    for(int duration = 39; duration > 0; duration--)
+      if(!testDTMF_module(duration, duration, false)) break;
+  };
 
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
@@ -65,46 +71,55 @@ void setup() {
   modeStart(mode); // set initial mode
 }
 
-bool testDTMF_module(String digits, int toneTime, int gapTime){
+// test DTMF module response at given tone and space times
+bool testDTMF_module(int toneTime, int spaceTime, bool showSend){
   // testing DTMF module by playing tones ourselves and checking pin responses
-  int countReads = 0;
-  int countMatch = 0;
-  int minDetectionTime = 0;
-  int maxDetectionTime = 0;
+  // The module may give a read during the space or even overlap into the next digit, so we must 
+  // detect reads independently of playing tones and run the loop extra iterations after finished.
+  // My testing shows min toneTime 33 and min spaceTime 19, but min combo time between 54 and 66 depending on combination.
+  const String digits = "1234567890*#ABCD";
   String reads;
-  Serial.print("Testing DTMF module, sending>  ");
-  for(char x : digits){
-    if(x == 0) break;
-    Serial.print(x);
+  bool checked = false;
+  String loop = digits + "XX";
+  if(showSend) Serial.print("Testing DTMF module, sending  > ");
+  for(char x : loop){
+    if(x != 0 && x != 'X') {
+      if(showSend) Serial.print(x);
+      mozzi.playDTMF(x, toneTime, spaceTime);
+    }
     auto start = millis();
-    auto until = start + toneTime + gapTime;
-    auto readFrom = start + 20;
-    bool checked = false;
-    mozzi.playDTMF(x, toneTime, gapTime);
+    auto until = start + toneTime + spaceTime;
     while(millis() < until) {
       mozzi.run();
-      if(!checked && readFrom < millis() && digitalRead(PIN_STQ)) {
+      bool reading = digitalRead(PIN_STQ);
+      if(checked && !reading) checked = false;
+      if(!checked && reading) {
         checked = true;
-        countReads++;
-        auto detectionTime = millis() - start;
-        if(detectionTime < minDetectionTime || minDetectionTime == 0) minDetectionTime = detectionTime;
-        if(detectionTime > maxDetectionTime || maxDetectionTime == 0) maxDetectionTime = detectionTime;
         byte tone = 0x00 | (digitalRead(PIN_Q1) << 0) | (digitalRead(PIN_Q2) << 1) | (digitalRead(PIN_Q3) << 2) | (digitalRead(PIN_Q4) << 3);
-        char digit = dtmfmod.tone2char(tone);
-        reads += digit ? digit : '_';
-        if(digit == x) countMatch++;
+        reads += dtmfmod.tone2char(tone);
       }
     }
   }
-  Serial.println();
-  Serial.printf("Testing DTMF module, detected> %s", reads.c_str());
-  int unread = digits.length() - countReads;
-  int misread = digits.length() - countMatch;
+  if(showSend) Serial.println();
+  int unread = digits.length() - reads.length();
+  int misread = 0;
+  String result;
+  // this misread check assumes all source digits are unique
+  for(int x = 0; x < digits.length(); x++){
+    int countFound = 0;
+    for(int y = 0; y < reads.length(); y++){
+      if(digits[x] == reads[y]) countFound++;
+    };
+    result += countFound == 0 ? '_' : digits[x];
+    if(countFound > 1) misread += countFound - 1;
+  };
+  Serial.printf("Testing DTMF module, detected > %s", result.c_str());
   Serial.printf(" --> %sED: ", unread + misread > 0 ? "FAIL" : "PASS");
   if(unread > 0) Serial.printf("%d unread, ", unread);
   if(misread > 0) Serial.printf("%d misread, ", misread);
-  Serial.printf("%d to %d ms detection time\n", minDetectionTime, maxDetectionTime);
-  return countReads > 0; // simply returning whether we detected the module
+  Serial.printf("%d/%d ms\n", toneTime, spaceTime);
+  mozzi.playDTMF('D', 50, 0); // turn off module LED's; effectively ignored until final iteration of this function because each iteration trumps the audio
+  return reads.length() > 0;  // simply returning whether we detected the module
 }
 
 void settingsInit(){
