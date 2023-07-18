@@ -49,6 +49,7 @@ I have a great appreciation for GadgetReboot's willingness to collaborate on our
   * ack & err tone feedback: 1 = success, 2 = invalid
   * region: *11 North America, *12 United Kingdom
   * DTMF decoder: *20 harware, *21 software (missing hardware will force software mode)
+  * DTMF module timing test: *3n where n is the max number of iterations [1 to 9] or [0] for no limit; test ends at max iterations or entire 16 digit sequence doens't read
 * plays audio sample for "call cannot be completed as dialed" when appropriate; based on work done by [GadgetReboot](https://youtu.be/qM0ZhSyA6Jw)
   * full sequence of not finishing dialing is realistic: dialtone, "try again" message twice, howler sound for a while, then silence because it gave up on you
 * dialing any 7-digit number will play ring or busy sound depending on first digit even or odd (temporary demo until far enough along to establish calls between two devices)
