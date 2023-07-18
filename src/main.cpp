@@ -57,11 +57,6 @@ void setup() {
     softwareDTMF = true;
     Serial.println("Hardware DTMF module not detected. Auto-switching to software DTMF.");
   };
-  // DTMF module speed test
-  if(dtmfHardwareExists) {
-    for(int duration = 39; duration > 0; duration--)
-      if(!testDTMF_module(duration, duration, false)) break;
-  };
 
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
@@ -113,7 +108,7 @@ bool testDTMF_module(int toneTime, int spaceTime, bool showSend){
     result += countFound == 0 ? '_' : digits[x];
     if(countFound > 1) misread += countFound - 1;
   };
-  Serial.printf("Testing DTMF module, detected > %s", result.c_str());
+  Serial.printf("                     detected > %s", result.c_str());
   Serial.printf(" --> %sED: ", unread + misread > 0 ? "FAIL" : "PASS");
   if(unread > 0) Serial.printf("%d unread, ", unread);
   if(misread > 0) Serial.printf("%d misread, ", misread);
@@ -342,11 +337,12 @@ void digitReceivedCallback(char digit){
 
 void configureByNumber(String starcode){
   bool success = false;
+  bool skipack = false;
   if(starcode[0] != '*') return;
   switch(starcode[1]){
-    case '1':
+    case '1': // change region
       switch(starcode[2]){
-        case '1': 
+        case '1': // region North America
           region = RegionConfig(region_northAmerica);
           mozzi.changeRegion(region);
           prefs.begin("phone", false);
@@ -355,7 +351,7 @@ void configureByNumber(String starcode){
           Serial.print("region changed to North America");
           success = true;
           break;
-        case '2': 
+        case '2': // region United Kingdom
           region = RegionConfig(region_unitedKingdom);
           mozzi.changeRegion(region);
           prefs.begin("phone", false);
@@ -366,7 +362,7 @@ void configureByNumber(String starcode){
           break;
       }
       break;
-    case '2':
+    case '2': // select hardware or software DTMF
       softwareDTMF = !!(starcode[2] - '0');
       prefs.begin("phone", false);
       prefs.putBool("dtmf", softwareDTMF);
@@ -374,13 +370,23 @@ void configureByNumber(String starcode){
       Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
       success = true;
       break;
+    case '3': // DTMF module speed test; last digit is max iterations, or zero to go until nothing reads successfully
+      skipack = true; // must skip normal ack so the D tone at end of the loop can clear the module's LED's
+      int start = 39;
+      int floor = (starcode[2] == '0') ? 0 : 39 - (starcode[2]-'0');
+      Serial.printf("testing DTMF module speed for maximum %d iterations...\n", start-floor);
+      for(int duration = start; duration > floor; duration--)
+        if(!testDTMF_module(duration, duration, false)) break;
+      break;
   }
 
-  if(success) {
-    mozzi.playTone(mozzi.zip, 1);
-  } else {
-    mozzi.playTone(mozzi.err, 2);
-    Serial.print("unrecognized star-code");
+  if(!skipack) {
+    if(success) {
+      mozzi.playTone(mozzi.zip, 1);
+    } else {
+      mozzi.playTone(mozzi.err, 2);
+      Serial.print("unrecognized star-code");
+    }
   }
 
   modeDefer(call_ready, 1000);
