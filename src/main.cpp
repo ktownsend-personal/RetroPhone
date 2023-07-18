@@ -76,7 +76,7 @@ bool testDTMF_module(int toneTime, int spaceTime, bool showSend){
   String reads;
   bool checked = false;
   String loop = digits + "XXXXXX";  // trailing X's to keep loop running after last digit
-  if(showSend) Serial.print("Testing DTMF module, sending  > ");
+  if(showSend) Serial.print("Testing DTMF module: ");
   for(char x : loop){
     if(x != 0 && x != 'X') {
       if(showSend) Serial.print(x);
@@ -95,7 +95,6 @@ bool testDTMF_module(int toneTime, int spaceTime, bool showSend){
       }
     }
   }
-  if(showSend) Serial.println();
   int unread = digits.length() - reads.length();
   int misread = 0;
   String result;
@@ -108,8 +107,10 @@ bool testDTMF_module(int toneTime, int spaceTime, bool showSend){
     result += countFound == 0 ? '_' : digits[x];
     if(countFound > 1) misread += countFound - 1;
   };
-  Serial.printf("                     detected > %s", result.c_str());
-  Serial.printf(" --> %sED: ", unread + misread > 0 ? "FAIL" : "PASS");
+  bool pass = (unread + misread == 0);
+  if(showSend && !pass) Serial.println();
+  if(!showSend || !pass) Serial.printf("                     %s", result.c_str());
+  Serial.printf(" --> %sED: ", pass ? "PASS" : "FAIL");
   if(unread > 0) Serial.printf("%d unread, ", unread);
   if(misread > 0) Serial.printf("%d misread, ", misread);
   Serial.printf("%d/%d ms\n", toneTime, spaceTime);
