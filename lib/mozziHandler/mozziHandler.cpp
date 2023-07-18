@@ -166,6 +166,14 @@ void mozziHandler::playSample(samples sample, byte iterations, unsigned gapTime)
 }
 
 void mozziHandler::playDTMF(char digit, int length, int gap) {
+
+  // DTMF keypad frequencies (Hz)
+  //     1209 1336 1477 1633
+  // 697   1    2    3    A
+  // 770   4    5    6    B
+  // 852   7    8    9    C
+  // 941   *    0    #    D
+
   auto dtmf_tone = ToneConfig();
   int cadence[3]{2, length, gap};
   dtmf_tone.cadence = cadence;
@@ -173,68 +181,68 @@ void mozziHandler::playDTMF(char digit, int length, int gap) {
   dtmf_tone.freqs = freqs;
   switch(digit){
     case '1':
-      dtmf_tone.freqs[1] = 697;
-      dtmf_tone.freqs[2] = 1209;
+      freqs[1] = 697;
+      freqs[2] = 1209;
       break;
     case '2':
-      dtmf_tone.freqs[1] = 697;
-      dtmf_tone.freqs[2] = 1336;
+      freqs[1] = 697;
+      freqs[2] = 1336;
       break;
     case '3':
-      dtmf_tone.freqs[1] = 697;
-      dtmf_tone.freqs[2] = 1477;
+      freqs[1] = 697;
+      freqs[2] = 1477;
       break;
     case 'A':
-      dtmf_tone.freqs[1] = 697;
-      dtmf_tone.freqs[2] = 1633;
+      freqs[1] = 697;
+      freqs[2] = 1633;
       break;
     case '4':
-      dtmf_tone.freqs[1] = 770;
-      dtmf_tone.freqs[2] = 1209;
+      freqs[1] = 770;
+      freqs[2] = 1209;
       break;
     case '5':
-      dtmf_tone.freqs[1] = 770;
-      dtmf_tone.freqs[2] = 1336;
+      freqs[1] = 770;
+      freqs[2] = 1336;
       break;
     case '6':
-      dtmf_tone.freqs[1] = 770;
-      dtmf_tone.freqs[2] = 1477;
+      freqs[1] = 770;
+      freqs[2] = 1477;
       break;
     case 'B':
-      dtmf_tone.freqs[1] = 770;
-      dtmf_tone.freqs[2] = 1633;
+      freqs[1] = 770;
+      freqs[2] = 1633;
       break;
     case '7':
-      dtmf_tone.freqs[1] = 852;
-      dtmf_tone.freqs[2] = 1209;
+      freqs[1] = 852;
+      freqs[2] = 1209;
       break;
     case '8':
-      dtmf_tone.freqs[1] = 852;
-      dtmf_tone.freqs[2] = 1336;
+      freqs[1] = 852;
+      freqs[2] = 1336;
       break;
     case '9':
-      dtmf_tone.freqs[1] = 852;
-      dtmf_tone.freqs[2] = 1477;
+      freqs[1] = 852;
+      freqs[2] = 1477;
       break;
     case 'C':
-      dtmf_tone.freqs[1] = 852;
-      dtmf_tone.freqs[2] = 1633;
+      freqs[1] = 852;
+      freqs[2] = 1633;
       break;
     case '*':
-      dtmf_tone.freqs[1] = 941;
-      dtmf_tone.freqs[2] = 1209;
+      freqs[1] = 941;
+      freqs[2] = 1209;
       break;
     case '0':
-      dtmf_tone.freqs[1] = 941;
-      dtmf_tone.freqs[2] = 1336;
+      freqs[1] = 941;
+      freqs[2] = 1336;
       break;
     case '#':
-      dtmf_tone.freqs[1] = 941;
-      dtmf_tone.freqs[2] = 1477;
+      freqs[1] = 941;
+      freqs[2] = 1477;
       break;
     case 'D':
-      dtmf_tone.freqs[1] = 941;
-      dtmf_tone.freqs[2] = 1633;
+      freqs[1] = 941;
+      freqs[2] = 1633;
       break;
   }
   toneStart(dtmf_tone, 1);

@@ -43,11 +43,12 @@ I have a great appreciation for GadgetReboot's willingness to collaborate on our
   * call progress detection debounce tuned to ignore dialing pulses
   * hardware DTMF decoding with [MT8870 module](https://microcontrollerslab.com/mt8870-dtmf-decoder-module-pinout-interfacing-with-arduino-features/)
   * software DTMF decoding with [PhoneDTMF](https://github.com/Adrianotiger/phoneDTMF) (has severe limitation...see challenges)
+  * automatic presence detection of hardware DTMF module at startup to force software detection if not present
 * configuration by dialing star-codes (or 22 instead of * for pulse dialing)
   * settings are saved to onboard flash and survive reboot and flashing updates
   * ack & err tone feedback: 1 = success, 2 = invalid
   * region: *11 North America, *12 United Kingdom
-  * DTMF decoder: *20 harware, *21 software
+  * DTMF decoder: *20 harware, *21 software (missing hardware will force software mode)
 * plays audio sample for "call cannot be completed as dialed" when appropriate; based on work done by [GadgetReboot](https://youtu.be/qM0ZhSyA6Jw)
   * full sequence of not finishing dialing is realistic: dialtone, "try again" message twice, howler sound for a while, then silence because it gave up on you
 * dialing any 7-digit number will play ring or busy sound depending on first digit even or odd (temporary demo until far enough along to establish calls between two devices)
