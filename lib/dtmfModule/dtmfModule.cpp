@@ -21,6 +21,7 @@ void dtmfModule::setDigitCallback(void (*callback)(char)) {
 void dtmfModule::start(){
   newDTMF = true;
   currentDTMF = 0;
+  //TODO: someday if we implement a pin to control power to the module we will want to start power here and add a stop() method to turn off power
 }
 
 void dtmfModule::run(){
@@ -57,7 +58,7 @@ char dtmfModule::tone2char(byte tone){
     case 0x0D: return 'A';
     case 0x0E: return 'B';
     case 0x0F: return 'C';
-    case 0x00: return 'D';  // NOTE that D is 0x00 because 4 bits can't represent 0x10, which effectively means we have no "invalid" scenario
+    case 0x00: return 'D';  // NOTE that D is 0x00 because 4 bits can't represent 0x10
     default: return ' ';    // space means invalid value
   }
 }
