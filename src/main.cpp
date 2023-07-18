@@ -51,7 +51,7 @@ void setup() {
 
   settingsInit();
 
-  bool dtmfHardwareExists = testDTMF_module("1234567890*#ABCD", 70, 50);
+  bool dtmfHardwareExists = testDTMF_module("1234567890*#ABCD", 40, 40);
   if(!dtmfHardwareExists && !softwareDTMF) {
     softwareDTMF = true;
     Serial.println("Hardware DTMF module not detected. Auto-switching to software DTMF.");
@@ -77,12 +77,11 @@ bool testDTMF_module(String digits, int toneTime, int gapTime){
     if(x == 0) break;
     Serial.print(x);
     auto start = millis();
-    auto toneUntil = start + toneTime;
-    auto gapUntil = toneUntil + gapTime;
+    auto until = start + toneTime + gapTime;
     auto readFrom = start + 20;
     bool checked = false;
     mozzi.playDTMF(x, toneTime, gapTime);
-    while(millis() < toneUntil) {
+    while(millis() < until) {
       mozzi.run();
       if(!checked && readFrom < millis() && digitalRead(PIN_STQ)) {
         checked = true;
@@ -96,14 +95,15 @@ bool testDTMF_module(String digits, int toneTime, int gapTime){
         if(digit == x) countMatch++;
       }
     }
-    while(millis() < gapUntil){
-      mozzi.run();
-    }
   }
   Serial.println();
-  Serial.printf("Testing DTMF module, detected> %s\n", reads.c_str());
-  Serial.printf("Testing DTMF module, results>  %d/%d read, %d/%d accuracy, %dms to %dms detection time", countReads, digits.length(), countMatch, digits.length(), minDetectionTime, maxDetectionTime);
-  Serial.println();
+  Serial.printf("Testing DTMF module, detected> %s", reads.c_str());
+  int unread = digits.length() - countReads;
+  int misread = digits.length() - countMatch;
+  Serial.printf(" --> %sED: ", unread + misread > 0 ? "FAIL" : "PASS");
+  if(unread > 0) Serial.printf("%d unread, ", unread);
+  if(misread > 0) Serial.printf("%d misread, ", misread);
+  Serial.printf("%d to %d ms detection time\n", minDetectionTime, maxDetectionTime);
   return countReads > 0; // simply returning whether we detected the module
 }
 
