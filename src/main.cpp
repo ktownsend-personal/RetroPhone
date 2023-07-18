@@ -80,7 +80,7 @@ bool testDTMF_module(int toneTime, int spaceTime, bool showSend){
   const String digits = "1234567890*#ABCD";
   String reads;
   bool checked = false;
-  String loop = digits + "XX";
+  String loop = digits + "XXXXXX";  // trailing X's to keep loop running after last digit
   if(showSend) Serial.print("Testing DTMF module, sending  > ");
   for(char x : loop){
     if(x != 0 && x != 'X') {
