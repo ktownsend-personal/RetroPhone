@@ -6,6 +6,7 @@
 #include "dtmfHandler.h"
 #include "dtmfModule.h"
 #include "Preferences.h"
+#include "mp3Handler.h"
 
 #define PIN_LED 2           // using onboard LED until I get my addressable RGB
 #define PIN_BTN 12          // external button to initiate ringing
@@ -30,6 +31,7 @@
 #define PIN_STQ 27          // DTMF active and ready to read
 
 bool softwareDTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
+bool testMP3 = true;
 
 String digits; // this is where we accumulate dialed digits
 auto prefs   = Preferences();
@@ -45,6 +47,12 @@ void setup() {
   Serial.println();
   Serial.println("RetroPhone, by Keith Townsend");
   
+  if(testMP3){
+    Serial.println("Testing MP3 playback...");
+    testmp3();
+    return;
+  }
+
   pinMode(PIN_LED, OUTPUT);
   pinMode(PIN_BTN, INPUT_PULLDOWN);
   pinMode(PIN_SHK, INPUT_PULLUP);
@@ -132,6 +140,7 @@ void settingsInit(){
 }
 
 void loop() {
+  if(testMP3) return;
   modeRun(mode);                        // always run the current mode before modeDetect() because mode can change during modeRun()
   modeDeferCheck();                     // check if deferred mode ready to activate
   modes newmode = modeDetect();         // check inputs for new mode

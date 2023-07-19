@@ -88,6 +88,8 @@ void mozziHandler::changeRegion(RegionConfig region){
 }
 
 void mozziHandler::run() {
+  if(!isPlaying()) return; // short-circuit when stopped
+  
   audioHook(); // handle mozzi operations periodically
 
   // skip cadence logic until it's transitioning to minimize overhead accessing pointers
@@ -135,12 +137,27 @@ void mozziHandler::run() {
   }
 }
 
+bool mozziHandler::isPlaying(){
+  return sample_playing || tone_cadence_timings != NULL;
+}
+
 void mozziHandler::stop(){
-  toneStop();
+  tone1.setFreq(0);
+  tone2.setFreq(0);
+  tone3.setFreq(0);
+  tone4.setFreq(0);
+  tone_cadence_timings = NULL;
+  tone_cadence_on = false;
+  sample_playing = false;
+
+  // it seems that Mozzi needs about 35ms to settle the audio when stopping (only a problem if we are trying not to call audioHook() in run() when stopped to avoid affecting other heavy tasks
+  //TODO: I wonder if this 35ms settling is causing our 33ms toneTime minimum with the DTMF speed test?
+  auto until = millis() + 35;
+  while(millis() < until) audioHook();
 }
 
 void mozziHandler::playTone(tones tone, byte iterations){
-  toneStop(); // ensure anything currently playing is stopped first
+  stop(); // ensure anything currently playing is stopped first
   switch(tone){
     case dialtone:
       return toneStart(mozziRegion.dial);
@@ -158,7 +175,7 @@ void mozziHandler::playTone(tones tone, byte iterations){
 }
 
 void mozziHandler::playSample(samples sample, byte iterations, unsigned gapTime) {
-  toneStop(); // ensure anything currently playing is stopped first
+  stop(); // ensure anything currently playing is stopped first
   switch(sample){
     case dialAgain:
       return messageDialAgain(iterations, gapTime);
@@ -273,14 +290,4 @@ void mozziHandler::toneStart(ToneConfig tc, byte iterations){
     tone_cadence_index = 1;                        // first cadence index (position 0 is the count, so start at 1)
     tone_cadence_until = millis() + tc.cadence[1]; // pre-calculating expiration avoids having to do the math on every cycle
   };
-}
-
-void mozziHandler::toneStop()  {
-  tone_cadence_timings = NULL;
-  tone_cadence_on = false;
-  sample_playing = false;
-  tone1.setFreq(0);
-  tone2.setFreq(0);
-  tone3.setFreq(0);
-  tone4.setFreq(0);
 }

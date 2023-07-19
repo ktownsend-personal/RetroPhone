@@ -27,11 +27,11 @@ class mozziHandler
     void playDTMF(char digit, int length, int gap);
     void run();
     void stop();
+    bool isPlaying();
 
   private:
     void messageDialAgain(byte iterations, unsigned gapTime);
     void toneStart(ToneConfig tc, byte iterations = 0);
-    void toneStop();
 };
 
 #endif
