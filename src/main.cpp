@@ -31,7 +31,6 @@
 #define PIN_STQ 27          // DTMF active and ready to read
 
 bool softwareDTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
-bool testMP3 = true;
 
 String digits; // this is where we accumulate dialed digits
 auto prefs   = Preferences();
@@ -46,12 +45,6 @@ void setup() {
   Serial.begin(115200);
   Serial.println();
   Serial.println("RetroPhone, by Keith Townsend");
-  
-  if(testMP3){
-    Serial.println("Testing MP3 playback...");
-    testmp3();
-    return;
-  }
 
   pinMode(PIN_LED, OUTPUT);
   pinMode(PIN_BTN, INPUT_PULLDOWN);
@@ -140,7 +133,6 @@ void settingsInit(){
 }
 
 void loop() {
-  if(testMP3) return;
   modeRun(mode);                        // always run the current mode before modeDetect() because mode can change during modeRun()
   modeDeferCheck();                     // check if deferred mode ready to activate
   modes newmode = modeDetect();         // check inputs for new mode
@@ -379,6 +371,12 @@ void configureByNumber(String starcode){
       prefs.end();
       Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
       success = true;
+      break;
+    case '4': // mp3 test
+      mozzi.stop(); // stop Mozzi explicitly so it doesn't interfere with our test
+      Serial.println("Testing MP3 playback; normal phone will resume in 1 minute...");
+      testmp3();
+      delay(60000);
       break;
     case '3': // DTMF module speed test; last digit is max iterations, or zero to go until nothing reads successfully
       skipack = true; // must skip normal ack so the D tone at end of the loop can clear the module's LED's

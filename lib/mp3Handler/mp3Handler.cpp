@@ -1,5 +1,5 @@
 #include "mp3Handler.h"
-#include "spiffs.h"
+#include "SPIFFS.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -11,8 +11,7 @@
 
 const int BUFFER_SIZE = 1024;
 
-void play_task(void *param)
-{
+void play_task(void *param) {
   Output *output = new DACOutput();
   // create the file system
   SPIFFS spiffs("/fs");
@@ -28,8 +27,6 @@ void play_task(void *param)
     "complete2-bell-f1.mp3", 
     "discoornis-bell-f1.mp3", 
   };
-  //TODO: why is only the first file playing audibly, and the rest seem to play but are silent? Always first audible regardless of order. 
-  //TODO: try removing array and using a switch on iteration to open the files
   for(auto file : files){
     // mp3 decoder state
     mp3dec_t mp3d = {};
@@ -82,8 +79,14 @@ void play_task(void *param)
     }
     fclose(fp);
   }
+
+  //clean up and terminate
+  output->~Output();
+  spiffs.~SPIFFS();
+  pcm = NULL;
+  input_buf = NULL;
   Serial.println("Done testing MP3 playback.");
-  vTaskSuspend(NULL); // stop the work //TODO: deallocate memory and terminate instead of suspending
+  vTaskDelete(NULL);
 }
 
 void testmp3()

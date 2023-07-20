@@ -88,7 +88,7 @@ void mozziHandler::changeRegion(RegionConfig region){
 }
 
 void mozziHandler::run() {
-  if(!isPlaying()) return; // short-circuit when stopped
+  if(!isPlaying()) return; // short-circuit when stopped to avoid interference with other high-demand code or anything else using the two DAC pins
   
   audioHook(); // handle mozzi operations periodically
 
@@ -152,6 +152,7 @@ void mozziHandler::stop(){
 
   // it seems that Mozzi needs about 35ms to settle the audio when stopping (only a problem if we are trying not to call audioHook() in run() when stopped to avoid affecting other heavy tasks
   //TODO: I wonder if this 35ms settling is causing our 33ms toneTime minimum with the DTMF speed test?
+  //TODO: watch for interference with loop cycles because we have a 35ms blocking loop here
   auto until = millis() + 35;
   while(millis() < until) audioHook();
 }
