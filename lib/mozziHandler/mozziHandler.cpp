@@ -142,6 +142,8 @@ bool mozziHandler::isPlaying(){
 }
 
 void mozziHandler::stop(){
+  if(!sample_playing && tone_cadence_timings == NULL) return;
+
   tone1.setFreq(0);
   tone2.setFreq(0);
   tone3.setFreq(0);

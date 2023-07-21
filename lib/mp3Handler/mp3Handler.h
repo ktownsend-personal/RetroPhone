@@ -3,7 +3,8 @@
 
 #include "Arduino.h"
 
-void testmp3();
-void play_task(void *param);
+void mp3_task(void *arg);
+void mp3_start(String filepath);
+void mp3_stop();
 
 #endif

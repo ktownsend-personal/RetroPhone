@@ -191,6 +191,7 @@ void modeStop(modes oldmode) {
       ringer.stop();
       break;
     default:
+      mp3_stop();
       mozzi.stop();
       break;
   }
@@ -373,11 +374,22 @@ void configureByNumber(String starcode){
       success = true;
       break;
     case '4': // mp3 test
-      mozzi.stop(); // stop Mozzi explicitly so it doesn't interfere with our test
-      Serial.println("Testing MP3 playback; normal phone will resume in 1 minute...");
-      testmp3();
-      delay(60000);
-      break;
+      Serial.println("Testing MP3 playback; normal phone will resume in 15 seconds...");
+      switch(starcode[2]){
+        case '1':
+          mp3_start("/fs/circuits-bell-f1.mp3");
+          break;
+        case '2':
+          mp3_start("/fs/complete2-bell-f1.mp3");
+          break;
+        case '3':
+          mp3_start("/fs/discoornis-bell-f1.mp3");
+          break;
+        case '4':
+          mp3_start("/fs/timeout-bell-f1.mp3");
+          break;
+      }
+      return; // make sure we don't play ack tone because it would interfere with the playback
     case '3': // DTMF module speed test; last digit is max iterations, or zero to go until nothing reads successfully
       skipack = true; // must skip normal ack so the D tone at end of the loop can clear the module's LED's
       int start = 39;

@@ -11,85 +11,73 @@
 
 const int BUFFER_SIZE = 1024;
 
-void play_task(void *param) {
-  Output *output = new DACOutput();
-  // create the file system
-  SPIFFS spiffs("/fs");
-  // setup for the mp3 decoded
-  short *pcm = (short *)malloc(sizeof(short) * MINIMP3_MAX_SAMPLES_PER_FRAME);
-  uint8_t *input_buf = (uint8_t *)malloc(BUFFER_SIZE);
-  if (!pcm) ESP_LOGE("main", "Failed to allocate pcm memory");
-  if (!input_buf) ESP_LOGE("main", "Failed to allocate input_buf memory");
-  // files to play
-  String files[] = {
-    "timeout-bell-f1.mp3",
-    "circuits-bell-f1.mp3", 
-    "complete2-bell-f1.mp3", 
-    "discoornis-bell-f1.mp3", 
-  };
-  for(auto file : files){
-    // mp3 decoder state
-    mp3dec_t mp3d = {};
-    mp3dec_init(&mp3d);
-    mp3dec_frame_info_t info = {};
-    // keep track of how much data we have buffered, need to read and decoded
-    int to_read = BUFFER_SIZE;
-    int buffered = 0;
-    int decoded = 0;
-    bool is_output_started = false;
-    // this assumes that you have uploaded the mp3 file to the SPIFFS
-    auto filename = String("/fs/") + file;
-    FILE *fp = fopen(filename.c_str(), "r");
-    if (!fp) {
-      ESP_LOGE("main", "Failed to open file %s", filename.c_str());
-      continue;
-    };
-    while (1) {
-      size_t n = fread(input_buf + buffered, 1, to_read, fp); // read in the data that is needed to top up the buffer
-      vTaskDelay(pdMS_TO_TICKS(1));                           // feed the watchdog
-      buffered += n;
-      if (buffered == 0) {
-        // we've reached the end of the file and processed all the buffered data
-        output->stop();
-        is_output_started = false;
-        break;
-      }
-      int samples = mp3dec_decode_frame(&mp3d, input_buf, buffered, pcm, &info);  // decode the next frame
-      buffered -= info.frame_bytes;                                               // we've processed this may bytes from teh buffered data
-      memmove(input_buf, input_buf + info.frame_bytes, buffered);                 // shift the remaining data to the front of the buffer
-      to_read = info.frame_bytes;                                                 // we need to top up the buffer from the file
-      if (samples > 0) {
-        // if we haven't started the output yet we can do it now as we now know the sample rate and number of channels
-        if (!is_output_started) {
-          output->start(info.hz);
-          is_output_started = true;
-          Serial.printf("%s: %dHz, %d bitrate, %d channels, %d frame bytes\n", filename.c_str(), info.hz, info.bitrate_kbps, info.channels, info.frame_bytes);
-        }
-        // if we've decoded a frame of mono samples convert it to stereo by duplicating the left channel
-        // we can do this in place as our samples buffer has enough space
-        if (info.channels == 1) {
-          for (int i = samples - 1; i >= 0; i--) {
-            pcm[i * 2] = pcm[i];
-            pcm[i * 2 - 1] = pcm[i];
-          }
-        }
-        output->write(pcm, samples);  // write the decoded samples to the output
-        decoded += samples;           // keep track of how many samples we've decoded
-      }
-    }
-    fclose(fp);
-  }
+/* NOTE: if we want to use *real* I2S instead of onboard DAC:
+    // refer to original example at https://github.com/atomic14/esp32-play-mp3-demo
+    - add #include "I2SOutput.h"
+    - change "output = new DACOutput()" to new I2SOutput(i2s_port_t, i2s_pin_config_t) 
+    - set direction and level on the SD pin for your DAC if needed
+*/
 
-  //clean up and terminate
-  output->~Output();
+TaskHandle_t x_handle = NULL;
+
+void mp3_task(void *arg){
+  static mp3dec_t mp3d;                         // this gets populated by mp3 decoder on each read
+  mp3dec_frame_info_t info;                     // this gets populated by mp3 decoder on each read
+  unsigned char buf[BUFFER_SIZE];
+  int nbuf = 0;
+  SPIFFS spiffs = SPIFFS("/fs");                // open the file system
+  String* filepath = (String *)arg;             // convert void arg to the right type
+  FILE *fp = fopen(filepath->c_str(), "r");     // open the file
+  Output *output = new DACOutput();             // this seems to be using I2S to write to onboard DAC... I need to dig deeper to understand it
+  int to_read = BUFFER_SIZE;                    // first read is full buffer size; subsequent reads vary by how much is decoded
+  bool is_output_started = false;
+
+  do {
+    if(ulTaskNotifyTake(pdTRUE, 0)) break;      // we've been told to stop
+    vTaskDelay(pdMS_TO_TICKS(1));               // feed the watchdog
+    nbuf += fread(buf + nbuf, 1, to_read, fp);  // read from file into buffer
+    if (nbuf == 0) break;                       // end of file
+    short pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];
+    int samples = mp3dec_decode_frame(&mp3d, buf, nbuf, pcm, &info);  // decode mp3 data from buffer
+    nbuf -= info.frame_bytes;                   // adjust buffer count by how much was decoded
+    to_read = info.frame_bytes;                 // adjust how much to read from file on next cycle
+    memmove(buf, buf + info.frame_bytes, nbuf); // shift the remaining data to the front of the buffer
+    if(samples){
+      if (!is_output_started) {                 // start output stream when we start getting samples from decoder
+        output->start(info.hz);
+        is_output_started = true;
+      }
+      if (info.channels == 1) {                 // if mono make stereo by copying left channel
+        for (int i = samples - 1; i >= 0; i--) {
+          pcm[i * 2] = pcm[i];
+          pcm[i * 2 - 1] = pcm[i];
+        }
+      }
+      output->write(pcm, samples);              // write the decoded samples to the output
+    }
+  } while(info.frame_bytes);                    // we technically break out before this happens
+
+  //cleanup everything and terminate
+  fclose(fp);
+  output->stop();
+  fp = NULL;
   spiffs.~SPIFFS();
-  pcm = NULL;
-  input_buf = NULL;
-  Serial.println("Done testing MP3 playback.");
+  output->~Output();
+  output = NULL;
+  filepath = NULL;
+  x_handle = NULL;
+  Serial.print("Stopping mp3 task (self)");
   vTaskDelete(NULL);
 }
 
-void testmp3()
-{
-  xTaskCreatePinnedToCore(play_task, "task", 32768, NULL, 1, NULL, 0);
+// plays the file on core 0 as a task
+void mp3_start(String filepath){
+  static String f = filepath;
+  xTaskCreatePinnedToCore(mp3_task, "test2", 32768, (void*)&f, 1, &x_handle, 1);
+}
+
+// gracefully notifies the task to stop and cleanup
+void mp3_stop(){
+  if(x_handle == NULL) return;
+  xTaskNotifyGive(x_handle); // tell the task to stop
 }
