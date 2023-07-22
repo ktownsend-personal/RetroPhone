@@ -7,14 +7,16 @@
 #include "dtmfModule.h"
 #include "Preferences.h"
 #include "mp3Handler.h"
+#include "statusHandler.h"
 
 #define PIN_LED 2           // using onboard LED until I get my addressable RGB
+#define PIN_RGB 21          // addressable RGB for status
 #define PIN_BTN 12          // external button to initiate ringing
-#define PIN_AUDIO_IN 14     // software DTMF and live audio digitization if we are able to make that work
+#define PIN_AUDIO_IN 14     // software DTMF and maybe live audio digitization
 
 // Mozzi defaults; just defining so I remember
-#define PIN_AUDIO_OUT_L 25  // Mozzi defaults to this
-#define PIN_AUDIO_OUT_R 26  // Mozzi defaults to this
+#define PIN_AUDIO_OUT_L 25  // Mozzi defaults to this internal DAC pin
+#define PIN_AUDIO_OUT_R 26  // Mozzi defaults to this internal DAC pin
 
 // SLIC module
 #define PIN_SHK 13          // SLIC SHK, off-hook
@@ -28,7 +30,7 @@
 #define PIN_Q2 39           // DTMF bit 2
 #define PIN_Q3 34           // DTMF bit 3
 #define PIN_Q4 35           // DTMF bit 4
-#define PIN_STQ 27          // DTMF active and ready to read
+#define PIN_STQ 27          // DTMF value ready to read
 
 bool softwareDTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
 
@@ -40,6 +42,7 @@ auto dtmfer  = dtmfHandler(PIN_AUDIO_IN, dialingStartedCallback);
 auto dtmfmod = dtmfModule(PIN_Q1, PIN_Q2, PIN_Q3, PIN_Q4, PIN_STQ, dialingStartedCallback);
 auto region  = RegionConfig(region_northAmerica);
 auto mozzi   = mozziHandler(region);
+auto status  = statusHandler<PIN_RGB>(100);
 
 void setup() {
   Serial.begin(115200);
@@ -201,6 +204,7 @@ void modeStart(modes newmode) {
   Serial.printf("%s...", modeNames[newmode].c_str());
 
   digitalWrite(PIN_LED, digitalRead(PIN_SHK)); // basic off-hook status; might expand later with addressable RGB
+  status.show(newmode);
 
   switch(newmode){
     case call_incoming:
@@ -254,7 +258,8 @@ void modeStart(modes newmode) {
 }
 
 void modeRun(modes mode){
-  mozzi.run(); // this must always run because mozzi needs a lot of cycles to transition to silence
+  mozzi.run();  // this must always run because mozzi needs a lot of cycles to transition to silence
+  status.run(); // update LED visualization
 
   switch(mode){
     case call_incoming:
@@ -374,7 +379,7 @@ void configureByNumber(String starcode){
       success = true;
       break;
     case '4': // mp3 test
-      Serial.println("Testing MP3 playback; normal phone will resume in 15 seconds...");
+      Serial.println("Testing MP3 playback; hang up when done...");
       switch(starcode[2]){
         case '1':
           mp3_start("/fs/circuits-bell-f1.mp3");
