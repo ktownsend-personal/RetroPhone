@@ -32,7 +32,7 @@
 #define PIN_Q4 35           // DTMF bit 4
 #define PIN_STQ 27          // DTMF value ready to read
 
-bool softwareDTMF = false; // software DTMF decoding and Mozzi don't play nice together; true disables dialtone, false distables softwware DTMF
+bool softwareDTMF = true; // software DTMF decoding and Mozzi don't play nice together; true disables dialtone, false distables softwware DTMF
 
 String digits; // this is where we accumulate dialed digits
 auto prefs   = Preferences();
@@ -54,7 +54,7 @@ void setup() {
   pinMode(PIN_SHK, INPUT_PULLUP);
 
   settingsInit();
-  existsDTMF_module();
+  if(!softwareDTMF) existsDTMF_module();
 
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
@@ -202,7 +202,9 @@ void modeStop(modes oldmode) {
     default:
       mp3_stop();
       mozzi.stop();
-      delay(3); // tiny delay before allowing next mode to start resolves crash when switching from ready to timeout (mp3-tone to mozzi message); can remove when Mozzi no longer used
+
+      delay(30); // tiny delay before allowing next mode to start resolves crash when switching from ready to timeout (mp3-tone to mozzi message); can remove when Mozzi no longer used 
+                 // (NOTE: only needed 3ms for Mozzi until turning on sofware DTMF decoding, and now need 30ms)
       break;
   }
 }
@@ -221,14 +223,14 @@ void modeStart(modes newmode) {
       digits = "";
       timeoutStart();
       hooker.start();
-      // software-DTMF blocks too much to play audio, but hardware-DTMF ok
       if(softwareDTMF) {
         dtmfer.start();
+        // software-DTMF blocks too much to play audio with Mozzi
       } else {
         dtmfmod.start();
         // mozzi.playTone(mozzi.dialtone);
-        mp3_tone_start(); // testing new mp3 to I2S internal DAC code to play tone
       }
+      mp3_tone_start(); // testing new mp3 to I2S internal DAC code to play tone
       break;
     case call_pulse_dialing:
     case call_tone_dialing:
