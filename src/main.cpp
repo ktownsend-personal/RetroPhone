@@ -54,13 +54,7 @@ void setup() {
   pinMode(PIN_SHK, INPUT_PULLUP);
 
   settingsInit();
-
-  // DTMF module present?
-  bool dtmfHardwareExists = testDTMF_module(40, 40, true);
-  if(!dtmfHardwareExists && !softwareDTMF) {
-    softwareDTMF = true;
-    Serial.println("Hardware DTMF module not detected. Auto-switching to software DTMF.");
-  };
+  checkDTMF_module();
 
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
@@ -68,6 +62,18 @@ void setup() {
   dtmfmod.setDigitCallback(digitReceivedCallback);
 
   modeStart(mode); // set initial mode
+}
+
+void checkDTMF_module(){
+  // DTMF module present?
+  bool dtmfHardwareExists = testDTMF_module(40, 40, true);
+  if(!dtmfHardwareExists && !softwareDTMF) {
+    softwareDTMF = true;
+    Serial.println("Hardware DTMF module not detected. Auto-switching to software DTMF.");
+  };
+  // delay a bit to allow DTMF "D" to finish so we don't detect as dialing it if user has phone off the hook
+  auto until = millis() + 50;
+  while(millis() < until);
 }
 
 // test DTMF module response at given tone and space times
@@ -196,6 +202,7 @@ void modeStop(modes oldmode) {
     default:
       mp3_stop();
       mozzi.stop();
+      delay(3); // tiny delay before allowing next mode to start resolves crash when switching from ready to timeout (mp3-tone to mozzi message); can remove when Mozzi no longer used
       break;
   }
 }
