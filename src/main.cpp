@@ -14,9 +14,9 @@
 #define PIN_BTN 12          // external button to initiate ringing
 #define PIN_AUDIO_IN 14     // software DTMF and maybe live audio digitization
 
-// Mozzi defaults; just defining so I remember
-#define PIN_AUDIO_OUT_L 25  // Mozzi defaults to this internal DAC pin
-#define PIN_AUDIO_OUT_R 26  // Mozzi defaults to this internal DAC pin
+// Internal DAC pins; just defining so I remember Mozzi and mp3Handler use these
+#define PIN_AUDIO_OUT_L 25  // internal DAC pin
+#define PIN_AUDIO_OUT_R 26  // internal DAC pin
 
 // SLIC module
 #define PIN_SHK 13          // SLIC SHK, off-hook
@@ -32,7 +32,7 @@
 #define PIN_Q4 35           // DTMF bit 4
 #define PIN_STQ 27          // DTMF value ready to read
 
-bool softwareDTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
+bool softwareDTMF = false; // software DTMF decoding and Mozzi don't play nice together; true disables dialtone, false distables softwware DTMF
 
 String digits; // this is where we accumulate dialed digits
 auto prefs   = Preferences();
@@ -54,7 +54,7 @@ void setup() {
   pinMode(PIN_SHK, INPUT_PULLUP);
 
   settingsInit();
-  checkDTMF_module();
+  existsDTMF_module();
 
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
@@ -64,7 +64,7 @@ void setup() {
   modeStart(mode); // set initial mode
 }
 
-void checkDTMF_module(){
+void existsDTMF_module(){
   // DTMF module present?
   bool dtmfHardwareExists = testDTMF_module(40, 40, true);
   if(!dtmfHardwareExists && !softwareDTMF) {
