@@ -8,6 +8,17 @@
 #include "../samples/DialAgain/DialAgain1.h"  // audio sampled from https://www.thisisarecording.com/Joyce-Gordon.html
 #include "../samples/DialAgain/DialAgain2.h"  // and converted to .h files with https://sensorium.github.io/Mozzi/doc/html/char2mozzi_8py.html
 #include "../samples/DialAgain/DialAgain3.h"  
+
+//TODO: now that we have mp3Handler working, see if we can play tones with it and if so we should merge the two handlers and drop Mozzi
+
+/* NOTE:
+    The Mozzi library did not implement mozziStop(), so it hangs onto the I2S to internal DAC forever and that was crashing if we used I2S to internal DAC from mp3Handler.
+    I added these two lines to mozziStop() in MozziGuts_impl_ESP32.hpp:
+        i2s_stop((i2s_port_t)i2s_num);
+        i2s_driver_uninstall((i2s_port_t)i2s_num);
+    I also refactored this mozziHandler to ensure we call mozziStart() and mozziStop() at the points of audio playing. This fixed the crash.
+*/
+
 // use #define for CONTROL_RATE, not a constant
 #define CONTROL_RATE 64  // Hz, powers of 2 are most reliable
 
@@ -30,10 +41,6 @@ Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> tone1(SIN2048_DATA);
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> tone2(SIN2048_DATA);
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> tone3(SIN2048_DATA);
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> tone4(SIN2048_DATA);
-
-//TODO: refactor to allow more recordings with any number of samples; probably move to separate class to manage samples, or add to regions.h if using different recording per region
-//TODO: test merging the 3 samples back into one sample (may need to regenerate the sample data); the splitting GadgetReboot did may have only been needed on ESP8266
-//TODO: try reading samples from files in onboard and external flash memory to see if that's workable because we need a lot more space for samples than we can embed in the app
 
 // use: Sample <table_size, update_rate> SampleName (wavetable)
 Sample <DialAgain1_NUM_CELLS, AUDIO_RATE> sample1(DialAgain1_DATA);
@@ -72,7 +79,6 @@ mozziHandler::mozziHandler(RegionConfig region)
   mozziRegion = region;
 
   // init mozzi synth oscillators, starting with 0 Hz (no output)
-  startMozzi(CONTROL_RATE);
   tone1.setFreq(0);
   tone2.setFreq(0);
   tone3.setFreq(0);
@@ -88,7 +94,7 @@ void mozziHandler::changeRegion(RegionConfig region){
 }
 
 void mozziHandler::run() {
-  if(!isPlaying()) return; // short-circuit when stopped to avoid interference with other high-demand code or anything else using the two DAC pins
+  if(!isStarted) return;  // short-circuit when stopped
   
   audioHook(); // handle mozzi operations periodically
 
@@ -137,12 +143,12 @@ void mozziHandler::run() {
   }
 }
 
-bool mozziHandler::isPlaying(){
-  return sample_playing || tone_cadence_timings != NULL;
-}
-
 void mozziHandler::stop(){
-  if(!sample_playing && tone_cadence_timings == NULL) return;
+  if(!isStarted) return;
+
+  // force Mozzi to release I2S internal DAC when not playing audio (see NOTE at top of this file about code I had to add to Mozzi for this)
+  stopMozzi();
+  isStarted = false;
 
   tone1.setFreq(0);
   tone2.setFreq(0);
@@ -151,16 +157,18 @@ void mozziHandler::stop(){
   tone_cadence_timings = NULL;
   tone_cadence_on = false;
   sample_playing = false;
+}
 
-  // it seems that Mozzi needs about 35ms to settle the audio when stopping (only a problem if we are trying not to call audioHook() in run() when stopped to avoid affecting other heavy tasks
-  //TODO: I wonder if this 35ms settling is causing our 33ms toneTime minimum with the DTMF speed test?
-  //TODO: watch for interference with loop cycles because we have a 35ms blocking loop here
-  auto until = millis() + 35;
-  while(millis() < until) audioHook();
+void mozziHandler::start(){
+  if(isStarted) return;
+  startMozzi(CONTROL_RATE);
+  isStarted = true;
 }
 
 void mozziHandler::playTone(tones tone, byte iterations){
-  stop(); // ensure anything currently playing is stopped first
+  stop();   // ensure anything currently playing is stopped first
+  start();  // restart Mozzi on I2S internal DAC
+
   switch(tone){
     case dialtone:
       return toneStart(mozziRegion.dial);
@@ -179,6 +187,8 @@ void mozziHandler::playTone(tones tone, byte iterations){
 
 void mozziHandler::playSample(samples sample, byte iterations, unsigned gapTime) {
   stop(); // ensure anything currently playing is stopped first
+  start();  // restart Mozzi on I2S internal DAC
+
   switch(sample){
     case dialAgain:
       return messageDialAgain(iterations, gapTime);
@@ -265,6 +275,8 @@ void mozziHandler::playDTMF(char digit, int length, int gap) {
       freqs[2] = 1633;
       break;
   }
+
+  start();  // restart Mozzi on I2S internal DAC
   toneStart(dtmf_tone, 1);
 }
 
