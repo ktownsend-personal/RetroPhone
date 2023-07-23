@@ -6,5 +6,6 @@
 void mp3_task(void *arg);
 void mp3_start(String filepath);
 void mp3_stop();
+void mp3_tone_start();
 
 #endif

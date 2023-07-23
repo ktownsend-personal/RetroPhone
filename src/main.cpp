@@ -219,7 +219,8 @@ void modeStart(modes newmode) {
         dtmfer.start();
       } else {
         dtmfmod.start();
-        mozzi.playTone(mozzi.dialtone);
+        // mozzi.playTone(mozzi.dialtone);
+        mp3_tone_start(); // testing new mp3 to I2S internal DAC code to play tone
       }
       break;
     case call_pulse_dialing:

@@ -23,7 +23,7 @@ void DACOutput::start(int sample_rate)
     // clear the DMA buffers
     i2s_zero_dma_buffer(I2S_NUM_0);
     // KAT: setting sample rate explicitly instead of relying on i2s_config passed to i2s_driver_install() fixes a speed issue we were having on first playthrough
-    i2s_set_sample_rates(I2S_NUM_0, sample_rate);
+    i2s_set_sample_rates(I2S_NUM_0, sample_rate); //TODO: try removing this now that we aren't playing audio at boot to see if it's still needed
     // let it rip!
     i2s_start(I2S_NUM_0);
 }
