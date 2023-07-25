@@ -4,7 +4,9 @@
 
 Free for anyone to copy from. I live by the motto "inspire, not require" as much as I can.
 
-This hobby project is to make a few old phones interactive for my retro room so that visitors can experience old-school landline phones without my having to subscribe to an actual phone system. 
+This hobby project is to make a few old phones interactive for my retro room so that visitors can experience old-school landline phones without having to buy phone service.
+
+There is a lot of info in this README, but also some useful stuff in the [docs folder](docs/README.md).
 
 <p float="left">
   <a href="docs/modules and chips.jpg"><img src="docs/modules and chips.jpg" width="49%" /></a>
@@ -12,14 +14,14 @@ This hobby project is to make a few old phones interactive for my retro room so 
 </p>
 
 ## Goals
-* [ ] Dial a few phone numbers and get a simulated response from the "other end"
-* [ ] Call one of the other phones on display and talk to whoever answers
 * [ ] Accurately replicate a real phone experience
   * [x] physical ringing
   * [x] call progress tones
   * [x] rotary dialing (pulse dialing)
   * [X] tone dialing (DTMF)
   * [ ] automated phone service messages
+* [ ] Dial a few phone numbers and get a simulated response from the "other end"
+* [ ] Call one of the other phones on display and talk to whoever answers
 
 ## Optional Goals
 * wifi for signaling and comms between phones if ESP32 can handle DAC/ADC simultaneously without noticeable audio problems
@@ -39,32 +41,30 @@ I have a great appreciation for GadgetReboot's willingness to collaborate on our
 * When I was around 12 years old I experimented with the house phone line by putting a speaker on it and hearing a dialtone. I was fascinated, and learned how to dial it by making and breaking the connection rapidly to call a friend and discovered he could hear me if I shouted into the speaker. I took a few old phones apart to study their innards and learned a few more things about them in the process. My parents never knew about that, of course! This project has a special connection with that memory.
 
 ## Currently Functional
-* button to trigger incoming call (temporary demo until far enough along to establish calls between two devices)
-* physical ringing for incoming call
+* physical ringing for incoming call, currently triggered by a button
 * real call progress tones using [Mozzi](https://sensorium.github.io/Mozzi/); based on work done by [GadgetReboot](https://youtu.be/qM0ZhSyA6Jw)
 * stable call progress transitions
 * switchable regions for North America and United Kingdom with accurate progress tones and ringing
 * tone and pulse dialing
-  * call progress detection debounce tuned to ignore dialing pulses
   * hardware DTMF decoding with [MT8870 module](https://microcontrollerslab.com/mt8870-dtmf-decoder-module-pinout-interfacing-with-arduino-features/)
   * software DTMF decoding with [PhoneDTMF](https://github.com/Adrianotiger/phoneDTMF) (has severe limitation...see challenges)
   * automatic presence detection of hardware DTMF module at startup to force software detection if not present
+  * software pulse dialing decoder
 * configuration by dialing star-codes (or 22 instead of * for pulse dialing)
   * settings are saved to onboard flash and survive reboot and flashing updates
-  * ack & err tone feedback: 1 = success, 2 = invalid
-  * region: *11 North America, *12 United Kingdom
-  * DTMF decoder: *20 harware, *21 software (missing hardware will force software mode)
+  * ack & err tone feedback
+  * region: dial *11 North America, *12 United Kingdom
+  * DTMF decoder: dial *20 harware, *21 software
   * DTMF module timing test: *3n where n is the max number of iterations [1 to 9] or [0] for no limit; test ends at max iterations or entire 16 digit sequence doens't read
 * plays audio sample for "call cannot be completed as dialed" when appropriate; based on work done by [GadgetReboot](https://youtu.be/qM0ZhSyA6Jw)
   * full sequence of not finishing dialing is realistic: dialtone, "try again" message twice, howler sound for a while, then silence because it gave up on you
 * dialing any 7-digit number will play ring or busy sound depending on first digit even or odd (temporary demo until far enough along to establish calls between two devices)
+* RGB LED for status colors & patterns representing all of the call states
 
 ## Next Steps
-* add filter to block 20Hz ring signal from SLIC's audio out line (mostly to keep it off my external speaker when it's ringing)
 * call progress recorded messages
-  * need more recordings, maybe need to use MicroSD for storage, but that might be too slow to read from
-  * see if file splitting is actually necessary or if we can have single files (original author split to solve problem on ESP8266)
-* RGB LED for status colors & patterns representing all of the call states
+  * currently making great progress playing mp3 files from onboard flash, but not ready to publish
+* add filter to block 20Hz ring signal from SLIC's audio out line (mostly to keep it off my external speaker when it's ringing)
 * trunk line via wifi, or wired if wifi affects audio quality
   * could switch to PiZeroW or something if simultaneious ADC/DAC/Wifi is too much for ESP32
   * might be an option to design these modules for a backplane in a single housing and just use wiring between the modules for analog audio (think of it like a local switching office)
@@ -76,9 +76,10 @@ I have a great appreciation for GadgetReboot's willingness to collaborate on our
 * Timing of stopping the ringer when handset taken off-hook is difficult to get "immediate", so there is a brief amount of clicking on the handset when first picked up. 
   * I was able to tweak my debounce logic to skip the debounce period when specifically transitioning from incoming to connected (triggered by going off-hook), which has it down to about 100 milliseconds of ringing overlap.
   * It seems like the SLIC takes a moment to detect off-hook when the RM pin is high, possibly related to the higher voltage while ringing. I noticed if I leave RM low while ringing the overlap disappears, however we need the RM pin high to actuate a physical bell. 
-  * This overlap might be normal, even with a real phone system...just rare for anyone to notice because they don't usually have the earpiece to their ear already when going off-hook. If I find a phone on a real phone system I may try to check this.
+  * This overlap might be normal, even with a real phone system...just rare for anyone to notice because they don't usually have the earpiece to their ear already when going off-hook while ringing. If I find a phone on a real phone system I will try to check this.
 * The SLIC's audio output pin has the 20Hz ringing signal while ringing (at audio level, not high voltage), likely requiring a filter or an isolation mechanism (relay, solid-state relay, other options?)
 * software-DTMF with [PhoneDTMF library](https://github.com/Adrianotiger/phoneDTMF) requires too much sample time and it murders mozzi so it requires not using dialtone, and I had repeating digit issues during steady tone presses
+  * While trying a new strategy to generate call progress tones I found that PhoneDTMF doesn't compete with the new dialtone and it mostly works fine. It doesn't hear the tone sometimes, but seems to get it most of the time. The new techique uses I2S to the local DAC like Mozzi, but runs as a FreeRTOS task instead of during the main loop. 
 * Using Preferences.h to save settings was hanging on the prefs.begin() call at startup. I couldn't find anyone else online having this issue, but I eventually figured out it was a timing issue of some sort. A short delay before calling prefs.begin() was needed. A 50ms delay seems sufficient. I occasionally saw hangs when reading values during startup(), so if you see that try increasing the delay. 
 
 ## Notable
@@ -86,17 +87,16 @@ I have a great appreciation for GadgetReboot's willingness to collaborate on our
 * RM and FR pins on the SLIC are both necessary for rining. The RM pin sets the higher ringing voltage, and the FR pin flip flops the polarity on high and low cycles. Both are definitely needed, although the electronic ringer on my Sony slimline works fine with just FR toggled, the physical bell on the Snoopy phone requires the RM to have enough power to physically move the armature. The FR pin should be toggled at 50% duty cycle at 20Hz with cadence 2s-on/4s-off for US ring.
 * When using PhoneDTMF library, we seem to need 300 sample count and 6000 frequency to avoid detection dropouts while a button is pressed (which causes repeated numbers)
   * I tried 50ms debounce and still got gaps, and since 50ms tone and 50ms space are the standard that I saw someplace we probably shouldn't debounce longer
+  * Update: I have since found a bug in my coordination of PhoneDTMF that resolved the debounce issue without needing a debounce.
 * phones only use frequencies 300Hz to 3400Hz, but somehow we actually hear lower tones due to [this phenomenon](https://blogs.scientificamerican.com/roots-of-unity/your-telephone-is-lying-to-you-about-sounds/)
 
 ## Thoughts
 * would interrupts be useful in this project so we can put the device to sleep when idle, but still wake up for incoming wifi call or off-hook pin?
-  * I wonder if the whole state machine could be based on interrupts and avoid having a loop entirely?
-* should probalby have special response for 911 dialing to clearly say it's not a real phone and cannot be used for emergencies
-* real phone system audio ranges from 300 to 3400 Hz, we we can potentially use that to our advantage in our recorded sample quality and digitizing quality
-* would it be useful to use an IO pin to control power to the hardware DTMF decoder to reduce power consumption?
+* special response for 911 dialing to clearly say it's not a real phone and cannot be used for emergencies
+* digitizing settings can be fairly low because a real phone system caps the upper frequency at 3400 Hz
+* could use an IO pin to control power to the hardware DTMF decoder and level shifter to reduce power consumption, but only if I want to run on a battery
 
 ## Tidbits
-* `while (!Serial);` to wait for serial connection (example was right after Serial.begin() in setup())
 * `for (const auto &line : lines){}` enumerate a local array (not pointer to array) [ref](https://luckyresistor.me/2019/07/12/write-less-code-using-the-auto-keyword/)
 * `Serial.printf("..%s..", stringvar.c_str())` to print `String` type with printf because `%s` epxects C style string not `String` object and will garble the value or even crash the app
 * passing arrays to functions, [good explanation](https://stackoverflow.com/a/19894884/8228356)
