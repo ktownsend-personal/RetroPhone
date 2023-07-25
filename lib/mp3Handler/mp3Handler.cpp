@@ -105,7 +105,6 @@ void mp3_tone_task(void *arg){
   mp3tone4.setFreq(0);
 
   do {
-    vTaskDelay(pdMS_TO_TICKS(1));               // feed the watchdog
     short pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];   // this holds the data we want to give to I2S
     int samples = 576;
     for(int x = 0; x < samples; x++){
@@ -118,6 +117,7 @@ void mp3_tone_task(void *arg){
       is_output_started = true;
     }
     output->write(pcm, samples);                // write the tone samples to the output
+    vTaskDelay(pdMS_TO_TICKS(10));              // feed the watchdog
   } while(!ulTaskNotifyTake(pdTRUE, 0));        // run until told to stop by mp3_stop()
 
   //cleanup everything and terminate
