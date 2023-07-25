@@ -10,10 +10,6 @@ Currently not organized, but you may find something useful in this folder.
 * The green module is a level shifter from 5V to 3.3V or vice-versa. The DTMF module runs at 5V and the ESP32 runs at 3.3. 
 * The red module is a single addressable RBG LED for visual status.
 
-|||
-|---|---|
-|![The goodies](<modules and chips.jpg>)|![My prototype on breadboard](<prototype on breadboard.jpg>)|
-
 <p float="left">
   <a href="modules and chips.jpg"><img src="modules and chips.jpg" width="49%" /></a>
   <a href="prototype on breadboard.jpg"><img src="prototype on breadboard.jpg" width="49%" /></a>

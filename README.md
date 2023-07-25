@@ -6,6 +6,11 @@ Free for anyone to copy from. I live by the motto "inspire, not require" as much
 
 This hobby project is to make a few old phones interactive for my retro room so that visitors can experience old-school landline phones without my having to subscribe to an actual phone system. 
 
+<p float="left">
+  <a href="docs/modules and chips.jpg"><img src="docs/modules and chips.jpg" width="49%" /></a>
+  <a href="docs/prototype on breadboard.jpg"><img src="docs/prototype on breadboard.jpg" width="49%" /></a>
+</p>
+
 ## Goals
 * [ ] Dial a few phone numbers and get a simulated response from the "other end"
 * [ ] Call one of the other phones on display and talk to whoever answers
