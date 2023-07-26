@@ -58,12 +58,13 @@ There is a lot of info in this README, but also some useful stuff in the [docs f
   * DTMF module timing test: *3n where n is the max number of iterations [1 to 9] or [0] for no limit; test ends at max iterations or entire 16 digit sequence doens't read
 * plays audio sample for "call cannot be completed as dialed" when appropriate; based on work done by [GadgetReboot](https://youtu.be/qM0ZhSyA6Jw)
   * full sequence of not finishing dialing is realistic: dialtone, "try again" message twice, howler sound for a while, then silence because it gave up on you
+  * able to play mp3 files from internal flash so we can fit more recorded messages and manage them more easily
 * dialing any 7-digit number will play ring or busy sound depending on first digit even or odd (temporary demo until far enough along to establish calls between two devices)
 * RGB LED for status colors & patterns representing all of the call states
 
 ## Next Steps
 * call progress recorded messages
-  * currently making great progress playing mp3 files from onboard flash, but not ready to publish
+  * recently implemented playing mp3 files from onboard flash, but don't have the messages playing at the right times yet and don't have them equalized
 * add filter to block 20Hz ring signal from SLIC's audio out line (mostly to keep it off my external speaker when it's ringing)
 * trunk line via wifi, or wired if wifi affects audio quality
   * could switch to PiZeroW or something if simultaneious ADC/DAC/Wifi is too much for ESP32

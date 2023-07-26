@@ -18,6 +18,10 @@ Output::~Output()
   free(frames_buffer);
 }
 
+void Output::set_frequency(int sample_rate){
+  i2s_set_sample_rates(I2S_NUM_0, sample_rate);
+}
+
 void Output::stop()
 {
   // stop the i2S driver
