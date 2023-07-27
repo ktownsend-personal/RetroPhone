@@ -107,14 +107,18 @@ There is a lot of info in this README, but also some useful stuff in the [docs f
 * [KS0835F SLIC module](https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqbEtxcHQ2MnVEQ3c2ZXVjNHRtZW82Tk1JSS1UUXxBQ3Jtc0ttV0g1ZlFleXBXV0JRbVJTbldEbW12X2JVQ0ZJcEJ0NG44ck94cUtmeEowY2xuNi1QSEQwbzFzYmo1cDdGLTFWNHR4QmpVbS0yNlRvdWFYeEN4b3JUcnFYZnN3SWkwUGRmSmI4UDNFSDE3R1Rlb0Iycw&q=https%3A%2F%2Fs.click.aliexpress.com%2Fe%2F_DFeMKoP&v=qM0ZhSyA6Jw) (AG1171/AG1170 clone)
 * [ESP32 Freenove WROVER CAM board](https://www.amazon.com/ESP32-WROVER-Contained-Compatible-Bluetooth-Tutorials/dp/B09BC1N9LL) (not using camera for this project, but the power & GPIO breakout adapter is really handy)
 * [MT8870 module](https://microcontrollerslab.com/mt8870-dtmf-decoder-module-pinout-interfacing-with-arduino-features/)
-* [Level Shifter](https://www.sparkfun.com/products/12009)
+* [Level Shifter](https://www.pololu.com/product/2595)
 * [LM358P op-amp](https://www.mouser.com/ProductDetail/Texas-Instruments/LM358P?qs=X1HXWTtiZ0QtOTT8%252BVnsyw%3D%3D)
+* [WS2812S module](https://a.co/d/4Lo5N9y)
 
 ## Software
-* this repository
 * [VisualStudio Code](https://code.visualstudio.com/) with [PlatformIO extension](https://platformio.org/?utm_source=platformio&utm_medium=piohome) using Arduino libraries in C++
+* this repository
 * [DTMF software decoder](https://github.com/Adrianotiger/phoneDTMF)
 * [Mozzi](https://sensorium.github.io/Mozzi/)
+* [FastLED](https://github.com/FastLED/FastLED)
+* [ESP32 MP3 Player](https://github.com/atomic14/esp32-play-mp3-demo)
+* [minimp3.h](https://github.com/lieff/minimp3)
 
 ## Call Progress Modes
 I made this chart to help me track what transitional modes I should implement and what is active during each mode. Work in progress and likely to change as I get deeper into it and discover which assumptions aren't correct. 
