@@ -342,6 +342,7 @@ void digitReceivedCallback(char digit){
 void configureByNumber(String starcode){
   bool success = false;
   bool skipack = false;
+  bool changed = false;
   if(starcode[0] != '*') return;
   switch(starcode[1]){
     case '1': // change region
@@ -367,12 +368,30 @@ void configureByNumber(String starcode){
       }
       break;
     case '2': // select hardware or software DTMF
-      softwareDTMF = !!(starcode[2] - '0');
-      prefs.begin("phone", false);
-      prefs.putBool("dtmf", softwareDTMF);
-      prefs.end();
-      Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
-      success = true;
+      switch(starcode[2]){
+        case '0':
+          changed = softwareDTMF;
+          softwareDTMF = false;
+          success = true;
+          break;
+        case '1':
+          changed = !softwareDTMF;
+          softwareDTMF = true;
+          success = true;
+          break;
+        case '2':
+          // play "D" to clear DTMF module's LEDs
+          player.playDTMF("D", 75, 0);
+          delay(100);
+          success = true;
+          break;
+      }
+      if(changed){
+        prefs.begin("phone", false);
+        prefs.putBool("dtmf", softwareDTMF);
+        prefs.end();
+      }
+      if(success) Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
       break;
     case '4': // mp3 test
       Serial.println("Testing MP3 playback; hang up when done...");
