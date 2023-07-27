@@ -13,7 +13,7 @@
 #define PIN_BTN 12          // external button to initiate ringing
 #define PIN_AUDIO_IN 14     // software DTMF and maybe live audio digitization
 
-// Internal DAC pins; just defining so I remember Mozzi and mp3Handler use these
+// Internal DAC pins; just defining so I remember these are used by the audio libraries
 #define PIN_AUDIO_OUT_L 25  // internal DAC pin
 #define PIN_AUDIO_OUT_R 26  // internal DAC pin
 
@@ -22,7 +22,6 @@
 #define PIN_RM 32           // SLIC RM, ring mode enable
 #define PIN_FR 33           // SLIC FR, ring toggle, use PWM 50%
 #define CH_FR 0             // SLIC FR, PWM channel
-#define RING_FREQ 20        // SLIC FR, PWM frequency
 
 // DTMF module
 #define PIN_Q1 36           // DTMF bit 1
@@ -408,6 +407,8 @@ void configureByNumber(String starcode){
         case '4':
           player.playMP3("/fs/timeout-bell-f1.mp3");
           break;
+        case '5':
+          player.playMP3("/fs/complete5-xxx-anna.mp3");
       }
       return; // make sure we don't play ack tone because it would interfere with the playback
     case '3': // DTMF module speed test; last digit is max iterations, or zero to go until nothing reads successfully

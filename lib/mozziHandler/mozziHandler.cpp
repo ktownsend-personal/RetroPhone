@@ -2,12 +2,12 @@
 #include "mozziHandler.h"
 #include "regionConfig.h"
 #include "MozziGuts.h"
-#include "Oscil.h"                            // oscillator template
-#include "Sample.h"                           // sample template
-#include "tables/sin2048_int8.h"              // sine table for oscillator
-#include "../samples/DialAgain/DialAgain1.h"  // audio sampled from https://www.thisisarecording.com/Joyce-Gordon.html
-#include "../samples/DialAgain/DialAgain2.h"  // and converted to .h files with https://sensorium.github.io/Mozzi/doc/html/char2mozzi_8py.html
-#include "../samples/DialAgain/DialAgain3.h"  
+#include "Oscil.h"                         // oscillator template
+#include "Sample.h"                        // sample template
+#include "tables/sin2048_int8.h"           // sine table for oscillator
+#include "samples/DialAgain/DialAgain1.h"  // audio sampled from https://www.thisisarecording.com/Joyce-Gordon.html
+#include "samples/DialAgain/DialAgain2.h"  // and converted to .h files with https://sensorium.github.io/Mozzi/doc/html/char2mozzi_8py.html
+#include "samples/DialAgain/DialAgain3.h"  
 
 //TODO: now that we have mp3Handler working, see if we can play tones with it and if so we should merge the two handlers and drop Mozzi
 
