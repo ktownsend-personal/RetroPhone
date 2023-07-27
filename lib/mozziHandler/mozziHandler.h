@@ -31,7 +31,8 @@ class mozziHandler
   private:
     void messageDialAgain(byte iterations, unsigned gapTime);
     void toneStart(ToneConfig tc, byte iterations = 0);
-    void toneStop();
+    void start();
+    bool isStarted = false;
 };
 
 #endif

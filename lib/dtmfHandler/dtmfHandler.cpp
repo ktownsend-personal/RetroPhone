@@ -1,15 +1,13 @@
 #include "dtmfHandler.h"
 #include "PhoneDTMF.h"
-#include "bitset"
-#include "driver/adc.h"
 
-auto dtmf = PhoneDTMF(128);
+auto dtmf = PhoneDTMF(300);
 
 dtmfHandler::dtmfHandler(unsigned pinDTMF, void (*callback)(bool)) {
   PIN = pinDTMF;
   dialingStartedCallback = callback;
   pinMode(PIN, INPUT);
-  dtmf.begin(PIN, 6000);
+  dtmf.begin(PIN);
 }
 
 void dtmfHandler::setDigitCallback(void (*callback)(char)) {
@@ -20,19 +18,19 @@ void dtmfHandler::start(){
   newDTMF = true;
   currentDTMF = 0;
 
-  Serial.printf("DTMF: controller sample frequency limit: %d\n", dtmf.getSampleFrequence());
-  Serial.printf("DTMF: sampling frequency: %d\n", dtmf.getRealFrequence());
-  Serial.printf("DTMF: analog center: %d\n", dtmf.getAnalogCenter());
-  Serial.printf("DTMF: base magnitude: %d\n", dtmf.getBaseMagnitude());
-  Serial.printf("DTMF: estimated measurement time: %d\n", dtmf.getMeasurementTime());
+  // just some info to see when debugging
+  // Serial.printf("DTMF: controller sample frequency limit: %d\n", dtmf.getSampleFrequence());
+  // Serial.printf("DTMF: sampling frequency: %d\n", dtmf.getRealFrequence());
+  // Serial.printf("DTMF: analog center: %d\n", dtmf.getAnalogCenter());
+  // Serial.printf("DTMF: base magnitude: %d\n", dtmf.getBaseMagnitude());
+  // Serial.printf("DTMF: estimated measurement time: %d\n", dtmf.getMeasurementTime());
 }
 
 void dtmfHandler::run(){
   auto tone = dtmf.detect();
-  
-  std::bitset<8> b(tone);
-  if(tone != 0 && b.count() != 2) return; // ignore when not 2 bits active because that's not a good read (one bit per frequency detected out of 8 possible)
 
+  if(tone > 0 && dtmf.tone2char(tone) == 0) return; // ignore bad reads
+  
   if(tone > 0) {
     
     if(newDTMF) {

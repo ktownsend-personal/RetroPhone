@@ -2,18 +2,20 @@
 #include "progressModes.h"
 #include "ringHandler.h"
 #include "hookHandler.h"
-#include "mozziHandler.h"
+#include "audioGenerator.h"
 #include "dtmfHandler.h"
 #include "dtmfModule.h"
 #include "Preferences.h"
+#include "statusHandler.h"
 
 #define PIN_LED 2           // using onboard LED until I get my addressable RGB
+#define PIN_RGB 21          // addressable RGB for status
 #define PIN_BTN 12          // external button to initiate ringing
-#define PIN_AUDIO_IN 14     // software DTMF and live audio digitization if we are able to make that work
+#define PIN_AUDIO_IN 14     // software DTMF and maybe live audio digitization
 
-// Mozzi defaults; just defining so I remember
-#define PIN_AUDIO_OUT_L 25  // Mozzi defaults to this
-#define PIN_AUDIO_OUT_R 26  // Mozzi defaults to this
+// Internal DAC pins; just defining so I remember Mozzi and mp3Handler use these
+#define PIN_AUDIO_OUT_L 25  // internal DAC pin
+#define PIN_AUDIO_OUT_R 26  // internal DAC pin
 
 // SLIC module
 #define PIN_SHK 13          // SLIC SHK, off-hook
@@ -27,9 +29,9 @@
 #define PIN_Q2 39           // DTMF bit 2
 #define PIN_Q3 34           // DTMF bit 3
 #define PIN_Q4 35           // DTMF bit 4
-#define PIN_STQ 27          // DTMF active and ready to read
+#define PIN_STQ 27          // DTMF value ready to read
 
-bool softwareDTMF = false; // DTMF and Mozzi don't play nice together; true disables dialtone, false distables DTMF
+bool softwareDTMF = true; // software DTMF decoding and Mozzi don't play nice together; true disables dialtone, false distables softwware DTMF
 
 String digits; // this is where we accumulate dialed digits
 auto prefs   = Preferences();
@@ -38,25 +40,20 @@ auto hooker  = hookHandler(PIN_SHK, dialingStartedCallback);
 auto dtmfer  = dtmfHandler(PIN_AUDIO_IN, dialingStartedCallback);
 auto dtmfmod = dtmfModule(PIN_Q1, PIN_Q2, PIN_Q3, PIN_Q4, PIN_STQ, dialingStartedCallback);
 auto region  = RegionConfig(region_northAmerica);
-auto mozzi   = mozziHandler(region);
+auto player  = audioGenerator(region);
+auto status  = statusHandler<PIN_RGB>(100);
 
 void setup() {
   Serial.begin(115200);
   Serial.println();
   Serial.println("RetroPhone, by Keith Townsend");
-  
+
   pinMode(PIN_LED, OUTPUT);
   pinMode(PIN_BTN, INPUT_PULLDOWN);
   pinMode(PIN_SHK, INPUT_PULLUP);
 
   settingsInit();
-
-  // DTMF module present?
-  bool dtmfHardwareExists = testDTMF_module(40, 40, true);
-  if(!dtmfHardwareExists && !softwareDTMF) {
-    softwareDTMF = true;
-    Serial.println("Hardware DTMF module not detected. Auto-switching to software DTMF.");
-  };
+  if(!softwareDTMF) existsDTMF_module();
 
   ringer.setCounterCallback(ringCountCallback);
   hooker.setDigitCallback(digitReceivedCallback);
@@ -64,6 +61,18 @@ void setup() {
   dtmfmod.setDigitCallback(digitReceivedCallback);
 
   modeStart(mode); // set initial mode
+}
+
+void existsDTMF_module(){
+  // DTMF module present?
+  bool dtmfHardwareExists = testDTMF_module(40, 40, true);
+  if(!dtmfHardwareExists && !softwareDTMF) {
+    softwareDTMF = true;
+    Serial.println("Hardware DTMF module not detected. Auto-switching to software DTMF.");
+  };
+  // delay a bit to allow DTMF "D" to finish so we don't detect as dialing it if user has phone off the hook
+  auto until = millis() + 50;
+  while(millis() < until);
 }
 
 // test DTMF module response at given tone and space times
@@ -75,24 +84,16 @@ bool testDTMF_module(int toneTime, int spaceTime, bool showSend){
   const String digits = "1234567890*#ABCD";
   String reads;
   bool checked = false;
-  String loop = digits + "XXXXXX";  // trailing X's to keep loop running after last digit
-  if(showSend) Serial.print("Testing DTMF module: ");
-  for(char x : loop){
-    if(x != 0 && x != 'X') {
-      if(showSend) Serial.print(x);
-      mozzi.playDTMF(x, toneTime, spaceTime);
-    }
-    auto start = millis();
-    auto until = start + toneTime + spaceTime;
-    while(millis() < until) {
-      mozzi.run();
-      bool reading = digitalRead(PIN_STQ);
-      if(checked && !reading) checked = false;
-      if(!checked && reading) {
-        checked = true;
-        byte tone = 0x00 | (digitalRead(PIN_Q1) << 0) | (digitalRead(PIN_Q2) << 1) | (digitalRead(PIN_Q3) << 2) | (digitalRead(PIN_Q4) << 3);
-        reads += dtmfmod.tone2char(tone);
-      }
+  if(showSend) Serial.printf("Testing DTMF module: %s", digits.c_str());
+  auto until = millis() + ((toneTime+spaceTime)*digits.length()) + 500;
+  player.playDTMF(digits, toneTime, spaceTime);
+  while(millis() < until){
+    bool reading = digitalRead(PIN_STQ);
+    if(checked && !reading) checked = false;
+    if(!checked && reading) {
+      checked = true;
+      byte tone = 0x00 | (digitalRead(PIN_Q1) << 0) | (digitalRead(PIN_Q2) << 1) | (digitalRead(PIN_Q3) << 2) | (digitalRead(PIN_Q4) << 3);
+      reads += dtmfmod.tone2char(tone);
     }
   }
   int unread = digits.length() - reads.length();
@@ -114,12 +115,11 @@ bool testDTMF_module(int toneTime, int spaceTime, bool showSend){
   if(unread > 0) Serial.printf("%d unread, ", unread);
   if(misread > 0) Serial.printf("%d misread, ", misread);
   Serial.printf("%d/%d ms\n", toneTime, spaceTime);
-  mozzi.playDTMF('D', 50, 0); // turn off module LED's; effectively ignored until final iteration of this function because each iteration trumps the audio
   return reads.length() > 0;  // simply returning whether we detected the module
 }
 
 void settingsInit(){
-  delay(50);  // this delay resolved a timing issue, but not sure what the timing issue actually is (filesystem not ready yet, or some other activity?)
+  delay(50);  // this delay resolved a timing issue accessing Preferences.h, but not sure what the timing issue actually is (filesystem not ready yet, or some other activity?)
   prefs.begin("phone", false);
   bool dtmfmode = prefs.getBool("dtmf", false);
   Serial.printf("Using %s DTMF detection. Dial *20 for hardware, *21 for software.\n", dtmfmode ? "software" : "hardware");
@@ -127,7 +127,7 @@ void settingsInit(){
   regions r = (regions)prefs.getInt("region", (int)region_northAmerica);
   Serial.printf("Using %s sounds and ring style. Dial *11 for North America, *12 for United Kingdom.\n", r == region_northAmerica ? "North America" : "United Kingdom");
   region = RegionConfig(r);
-  mozzi.changeRegion(region);
+  player.changeRegion(region);
   prefs.end();
 }
 
@@ -190,7 +190,7 @@ void modeStop(modes oldmode) {
       ringer.stop();
       break;
     default:
-      mozzi.stop();
+      player.stop();
       break;
   }
 }
@@ -199,6 +199,7 @@ void modeStart(modes newmode) {
   Serial.printf("%s...", modeNames[newmode].c_str());
 
   digitalWrite(PIN_LED, digitalRead(PIN_SHK)); // basic off-hook status; might expand later with addressable RGB
+  status.show(newmode);
 
   switch(newmode){
     case call_incoming:
@@ -208,23 +209,24 @@ void modeStart(modes newmode) {
       digits = "";
       timeoutStart();
       hooker.start();
-      // software-DTMF blocks too much to play audio, but hardware-DTMF ok
       if(softwareDTMF) {
         dtmfer.start();
+        // software-DTMF blocks too much to play audio with Mozzi
       } else {
         dtmfmod.start();
-        mozzi.playTone(mozzi.dialtone);
+        // mozzi.playTone(mozzi.dialtone);
       }
+      player.playTone(player.dialtone);
       break;
     case call_pulse_dialing:
     case call_tone_dialing:
       timeoutStart();
       break;
     case call_timeout1:
-      mozzi.playSample(mozzi.dialAgain, 2, 2000);
+      player.playMP3("/fs/timeout-bell-f1.mp3", 2, 2000);
       break;
     case call_timeout2:
-      mozzi.playTone(mozzi.howler);
+      player.playTone(player.howler);
       break;
     case call_abandoned:
       break;
@@ -237,10 +239,10 @@ void modeStart(modes newmode) {
         modeGo(call_busy);
       break;
     case call_ringing:
-      mozzi.playTone(mozzi.ringing);
+      player.playTone(player.ringing);
       break;
     case call_busy:
-      mozzi.playTone(mozzi.busytone);
+      player.playTone(player.busytone);
       break;
     case call_operator:
       //TODO: handle operator simulation
@@ -252,7 +254,8 @@ void modeStart(modes newmode) {
 }
 
 void modeRun(modes mode){
-  mozzi.run(); // this must always run because mozzi needs a lot of cycles to transition to silence
+  // mozzi.run();  // this must always run because mozzi needs a lot of cycles to transition to silence
+  status.run(); // update LED visualization
 
   switch(mode){
     case call_incoming:
@@ -339,13 +342,14 @@ void digitReceivedCallback(char digit){
 void configureByNumber(String starcode){
   bool success = false;
   bool skipack = false;
+  bool changed = false;
   if(starcode[0] != '*') return;
   switch(starcode[1]){
     case '1': // change region
       switch(starcode[2]){
         case '1': // region North America
           region = RegionConfig(region_northAmerica);
-          mozzi.changeRegion(region);
+          player.changeRegion(region);
           prefs.begin("phone", false);
           prefs.putInt("region", region_northAmerica);
           prefs.end();
@@ -354,7 +358,7 @@ void configureByNumber(String starcode){
           break;
         case '2': // region United Kingdom
           region = RegionConfig(region_unitedKingdom);
-          mozzi.changeRegion(region);
+          player.changeRegion(region);
           prefs.begin("phone", false);
           prefs.putInt("region", region_unitedKingdom);
           prefs.end();
@@ -364,13 +368,48 @@ void configureByNumber(String starcode){
       }
       break;
     case '2': // select hardware or software DTMF
-      softwareDTMF = !!(starcode[2] - '0');
-      prefs.begin("phone", false);
-      prefs.putBool("dtmf", softwareDTMF);
-      prefs.end();
-      Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
-      success = true;
+      switch(starcode[2]){
+        case '0':
+          changed = softwareDTMF;
+          softwareDTMF = false;
+          success = true;
+          break;
+        case '1':
+          changed = !softwareDTMF;
+          softwareDTMF = true;
+          success = true;
+          break;
+        case '2':
+          // play "D" to clear DTMF module's LEDs
+          player.playDTMF("D", 75, 0);
+          delay(100);
+          success = true;
+          break;
+      }
+      if(changed){
+        prefs.begin("phone", false);
+        prefs.putBool("dtmf", softwareDTMF);
+        prefs.end();
+      }
+      if(success) Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
       break;
+    case '4': // mp3 test
+      Serial.println("Testing MP3 playback; hang up when done...");
+      switch(starcode[2]){
+        case '1':
+          player.playMP3("/fs/circuits-bell-f1.mp3");
+          break;
+        case '2':
+          player.playMP3("/fs/complete2-bell-f1.mp3");
+          break;
+        case '3':
+          player.playMP3("/fs/discoornis-bell-f1.mp3");
+          break;
+        case '4':
+          player.playMP3("/fs/timeout-bell-f1.mp3");
+          break;
+      }
+      return; // make sure we don't play ack tone because it would interfere with the playback
     case '3': // DTMF module speed test; last digit is max iterations, or zero to go until nothing reads successfully
       skipack = true; // must skip normal ack so the D tone at end of the loop can clear the module's LED's
       int start = 39;
@@ -383,9 +422,9 @@ void configureByNumber(String starcode){
 
   if(!skipack) {
     if(success) {
-      mozzi.playTone(mozzi.zip, 1);
+      player.playTone(player.zip, 1);
     } else {
-      mozzi.playTone(mozzi.err, 2);
+      player.playTone(player.err, 2);
       Serial.print("unrecognized star-code");
     }
   }
