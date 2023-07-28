@@ -9,8 +9,6 @@
 #include "samples/DialAgain/DialAgain2.h"  // and converted to .h files with https://sensorium.github.io/Mozzi/doc/html/char2mozzi_8py.html
 #include "samples/DialAgain/DialAgain3.h"  
 
-//TODO: now that we have mp3Handler working, see if we can play tones with it and if so we should merge the two handlers and drop Mozzi
-
 /* NOTE:
     The Mozzi library did not implement mozziStop(), so it hangs onto the I2S to internal DAC forever and that was crashing if we used I2S to internal DAC from mp3Handler.
     I added these two lines to mozziStop() in MozziGuts_impl_ESP32.hpp:

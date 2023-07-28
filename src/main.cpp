@@ -30,7 +30,7 @@
 #define PIN_Q4 35           // DTMF bit 4
 #define PIN_STQ 27          // DTMF value ready to read
 
-bool softwareDTMF = true; // software DTMF decoding and Mozzi don't play nice together; true disables dialtone, false distables softwware DTMF
+bool softwareDTMF = false;  // software DTMF decoding is finicky, so I want to switch between hardware and software DTMF decoders easily
 
 String digits; // this is where we accumulate dialed digits
 auto prefs   = Preferences();
@@ -210,10 +210,8 @@ void modeStart(modes newmode) {
       hooker.start();
       if(softwareDTMF) {
         dtmfer.start();
-        // software-DTMF blocks too much to play audio with Mozzi
       } else {
         dtmfmod.start();
-        // mozzi.playTone(mozzi.dialtone);
       }
       player.playTone(player.dialtone);
       break;
@@ -253,7 +251,6 @@ void modeStart(modes newmode) {
 }
 
 void modeRun(modes mode){
-  // mozzi.run();  // this must always run because mozzi needs a lot of cycles to transition to silence
   status.run(); // update LED visualization
 
   switch(mode){
@@ -262,9 +259,9 @@ void modeRun(modes mode){
       break;
     case call_ready:
       if(softwareDTMF) {
-        dtmfer.run();   // software-DTMF blocks too much to play audio, so if we want dialtone we have to disable this
+        dtmfer.run();   // software-DTMF is finicky with the loop because of how much time it takes to get samples
       } else {
-        dtmfmod.run();  // hardware DTMF module ok to run with dialtone
+        dtmfmod.run();  // hardware DTMF module works great
       }
       hooker.run();
       timeoutCheck();
@@ -274,11 +271,10 @@ void modeRun(modes mode){
       timeoutCheck();
       break;
     case call_tone_dialing:
-      // software-DTMF blocks too much to play audio, but hardware-DTMF ok
       if(softwareDTMF) {
-        dtmfer.run();
+        dtmfer.run();   // software-DTMF is finicky with the loop because of how much time it takes to get samples
       } else {
-        dtmfmod.run();
+        dtmfmod.run();  // hardware DTMF module works great
       }
       timeoutCheck();
       break;
@@ -369,21 +365,20 @@ void configureByNumber(String starcode){
     case '2': // select hardware or software DTMF
       switch(starcode[2]){
         case '0':
-          changed = softwareDTMF;
+          changed = softwareDTMF;   // check this before changing
           softwareDTMF = false;
           success = true;
           break;
         case '1':
-          changed = !softwareDTMF;
+          changed = !softwareDTMF;  // check this before changing
           softwareDTMF = true;
           success = true;
           break;
         case '2':
-          // play "D" to clear DTMF module's LEDs
           player.playDTMF("D", 75, 0);
           delay(100);
-          success = true;
-          break;
+          Serial.print("cleared DTMF module LEDs");
+          return; // no need to do ack tone or print success message
       }
       if(changed){
         prefs.begin("phone", false);
@@ -409,6 +404,17 @@ void configureByNumber(String starcode){
           break;
         case '5':
           player.playMP3("/fs/complete5-xxx-anna.mp3");
+          break;
+        case '6':
+          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 11500, 25000);
+          /*
+            Offset/Samples (found by trial & error)
+            5500/20000 = 0
+            8000/20000 = 1
+            11500/25000 = 2
+            trial and error sucks...do some math or something! Try this: fileoffset = (secondsoffset / totalseconds) * (filesize - metasize)
+          */
+          break;
       }
       return; // make sure we don't play ack tone because it would interfere with the playback
     case '3': // DTMF module speed test; last digit is max iterations, or zero to go until nothing reads successfully

@@ -16,9 +16,10 @@
 #include "minimp3.h"
 
 #define CHUNK 576 // this works out to 17.58ms of samples based on AUDIO_RATE of 32768; copied what mp3 decoder chunks at
-//QUESTION: what does I2S do if we are feeding samples faster than they are played?
+//QUESTION: what does I2S do if we are feeding samples faster than they are played? It times out and skips whatever didn't fit.
 
 //TODO: what is causing the clicking when the task exits? or is it when DAC finishes samples? Are transitions too abrupt? Do we need constant zeros feeding DAC? Look at signal on scope.
+//TODO: implement playback-stitching, such as different mp3 segments and/or tones + mp3
 
 const int BUFFER_SIZE = 1024;
 byte core;
@@ -92,13 +93,15 @@ void audioGenerator::playDTMF(String digits, unsigned toneTime, unsigned spaceTi
 }
 
 // plays the MP3 file as a task
-void audioGenerator::playMP3(String filepath, byte iterations, unsigned gapTime){
+void audioGenerator::playMP3(String filepath, byte iterations, unsigned gapTime, unsigned long offset, unsigned long segment){
   if(x_handle != NULL) stop();
 
   static mp3Def d;
   d.filepath = filepath;
   d.iterations = iterations;
   d.gapTime = gapTime;
+  d.offset = offset;
+  d.segment = segment;
 
   xTaskCreatePinnedToCore(mp3_task, "mp3", 32768, (void*)&d, 1, &x_handle, core);
 }
@@ -252,17 +255,14 @@ void tone_task(void *arg){
     do {                                                          // run the segments
       auto segmentIndex = d->segmentCount - segmentCount;         // calculate current segment index
       auto segment = d->segments[segmentIndex];                   // current segment
-      // if(!segment) Serial.print("*** no segment!!!!");
       unsigned long samples = CHUNK;
-      // Serial.printf("calculating sample count for segment index %d: ", segmentIndex);
       if(segment->duration > 0) samples = (unsigned long)AUDIO_RATE / (float)((float)1000/(float)segment->duration); // calculate number of samples to achieve duration
-      // Serial.printf("%d+%d: %dms = %d samples = %dms\n", segment->freq1, segment->freq2, segment->duration, samples, 1000/(AUDIO_RATE / samples));
       t1.setFreq(segment->freq1);
       t2.setFreq(segment->freq2);
       t3.setFreq(segment->freq3);
       t4.setFreq(segment->freq4);
-      while(samples > 0 && !is_output_ending) {                   // generate the samples in chunks to output
-        short pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];                 // this holds the data we want to give to I2S
+      while(samples > 0 && !is_output_ending) {                   // generate the samples in chunks
+        short pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];                 // this holds the samples we want to give to I2S
         auto toGenerate = (samples > CHUNK) ? CHUNK : samples;    // determine chunk size
         if(segment->duration != 0) samples -= toGenerate;         // only decrement chunk size if not an infinite segment
         for(int x = 0; x < toGenerate; x++){                      // fill frame buffer with samples
@@ -290,12 +290,11 @@ void mp3_task(void *arg){
   mp3Def* d = (mp3Def*)arg;                           // convert void arg to the right type
   SPIFFS spiffs = SPIFFS("/fs");                      // open the file system
   FILE *fp;                                           // file handle
-  bool is_output_started = false;
   bool is_output_ending = false;
   bool decrement = (d->iterations != 0);
 
   do {
-    fp = fopen(d->filepath.c_str(), "r");   // open the file
+    fp = fopen(d->filepath.c_str(), "rb");            // open the file
     if(!fp) {
       Serial.printf("%s not found", d->filepath.c_str());
       break;
@@ -305,8 +304,12 @@ void mp3_task(void *arg){
     unsigned char buf[BUFFER_SIZE];
     int nbuf = 0;
     int to_read = BUFFER_SIZE;                        // first read is full buffer size; subsequent reads vary by how much is decoded
+    bool is_output_started = false;
+    unsigned long samples_cutoff = 0;
+    unsigned long samples_played = 0;
 
     do {
+      is_output_ending = ulTaskNotifyTake(pdTRUE, 0); // flag if we've been told to stop
       nbuf += fread(buf + nbuf, 1, to_read, fp);      // read from file into buffer
       if (nbuf == 0) break;                           // end of file
       short pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];       // this will receive the decoded data for output
@@ -315,20 +318,35 @@ void mp3_task(void *arg){
       to_read = info.frame_bytes;                     // adjust how much to read from file on next cycle
       memmove(buf, buf + info.frame_bytes, nbuf);     // shift the remaining data to the front of the buffer
       if(samples){
+        if (!is_output_started) {                     // start output stream when we start getting samples from decoder
+          output->set_frequency(info.hz);
+          is_output_started = true;
+          if(d->offset > 0) {                         // jump ahead if appropriate
+            if(d->segment > 0) samples_cutoff = d->segment; // put a cap on how many samples to play
+            auto ftell1 = ftell(fp);
+            fseek(fp, 0, SEEK_END);
+            auto fsize = ftell(fp);
+            int result = fseek(fp, d->offset, SEEK_SET); // seek to offset position for playing a segment
+            auto ftell2 = ftell(fp);
+            Serial.printf("%d samples, %d Hz, %d frame bytes\n", samples, info.hz, info.frame_bytes);
+            Serial.printf("file size %d, seeking to %d returned %d; before=%d, after=%d\n", fsize, d->offset, result, ftell1, ftell2);
+            continue;
+          }
+        }
+        if(samples_cutoff > 0 && (samples_played + samples) > samples_cutoff) {
+          samples = (samples_cutoff - samples_played);// only send what we need if we reached end of specified segment
+          is_output_ending = true;                    // flag to stop after this iteration
+        }
         if (info.channels == 1) {                     // if mono make stereo by copying left channel
           for (int i = samples - 1; i >= 0; i--) {
             pcm[i * 2] = pcm[i];
             pcm[i * 2 - 1] = pcm[i];
           }
         }
-        if (!is_output_started) {                     // start output stream when we start getting samples from decoder
-          output->set_frequency(info.hz);
-          is_output_started = true;
-        }
         output->write(pcm, samples);                  // write the decoded samples to the output
+        samples_played += samples;                    // track how many samples have been output so we know when we hit our cutoff
       }
       vTaskDelay(pdMS_TO_TICKS(1));                   // feed the watchdog
-      is_output_ending = ulTaskNotifyTake(pdTRUE, 0); // we've been told to stop
     } while(info.frame_bytes && !is_output_ending);
 
     fclose(fp);
