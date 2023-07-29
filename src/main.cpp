@@ -387,6 +387,16 @@ void configureByNumber(String starcode){
       }
       if(success) Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
       break;
+    case '3': {       // DTMF module speed test; last digit is max iterations, or zero to go until nothing reads successfully
+      skipack = true; // must skip normal ack so the D tone at end of the loop can clear the module's LED's
+      int start = 39;
+      byte num = starcode[2] - '0';
+      int floor = (num == '0') ? 0 : (start - num);
+      Serial.printf("testing DTMF module speed for maximum %d iterations...\n", start-floor);
+      for(int duration = start; duration > floor; duration--)
+        if(!testDTMF_module(duration, duration, false)) break;
+      break;
+    }
     case '4': // mp3 test
       Serial.println("Testing MP3 playback; hang up when done...");
       switch(starcode[2]){
@@ -406,25 +416,45 @@ void configureByNumber(String starcode){
           player.playMP3("/fs/complete5-xxx-anna.mp3");
           break;
         case '6':
-          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 11500, 25000);
-          /*
-            Offset/Samples (found by trial & error)
-            5500/20000 = 0
-            8000/20000 = 1
-            11500/25000 = 2
-            trial and error sucks...do some math or something! Try this: fileoffset = (secondsoffset / totalseconds) * (filesize - metasize)
-          */
+          player.playMP3("/fs/anna-1DSS-default-vocab.mp3");
           break;
       }
       return; // make sure we don't play ack tone because it would interfere with the playback
-    case '3': // DTMF module speed test; last digit is max iterations, or zero to go until nothing reads successfully
-      skipack = true; // must skip normal ack so the D tone at end of the loop can clear the module's LED's
-      int start = 39;
-      int floor = (starcode[2] == '0') ? 0 : 39 - (starcode[2]-'0');
-      Serial.printf("testing DTMF module speed for maximum %d iterations...\n", start-floor);
-      for(int duration = start; duration > floor; duration--)
-        if(!testDTMF_module(duration, duration, false)) break;
-      break;
+    case '5':
+      Serial.println("Testing MP3 slicing; hang up when done...");
+      switch(starcode[2]){
+        case '0':
+          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 4670, 23770);
+          break;
+        case '1':
+          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 8944, 18787);
+          break;
+        case '2':
+          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 12520, 18566);
+          break;
+        case '3':
+          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 16088, 19580);
+          break;
+        case '4':
+          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 19768, 17684);
+          break;
+        case '5':
+          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 23015, 27651);
+          break;
+        case '6':
+          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 28291, 23682);
+          break;
+        case '7':
+          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 32749, 18610);
+          break;
+        case '8':
+          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 36172, 18213);
+          break;
+        case '9':
+          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 39468, 25049);
+          break;
+      }
+      return; // make sure we don't play ack tone because it would interfere with the playback
   }
 
   if(!skipack) {

@@ -19,7 +19,7 @@
 //QUESTION: what does I2S do if we are feeding samples faster than they are played? It times out and skips whatever didn't fit.
 
 //TODO: what is causing the clicking when the task exits? or is it when DAC finishes samples? Are transitions too abrupt? Do we need constant zeros feeding DAC? Look at signal on scope.
-//TODO: implement playback-stitching, such as different mp3 segments and/or tones + mp3
+//TODO: implement playback-sequencing, such as different mp3 segments and/or tones + mp3
 
 const int BUFFER_SIZE = 1024;
 byte core;
@@ -307,9 +307,11 @@ void mp3_task(void *arg){
     bool is_output_started = false;
     unsigned long samples_cutoff = 0;
     unsigned long samples_played = 0;
+    unsigned long bytes_played = 0;
 
     do {
       is_output_ending = ulTaskNotifyTake(pdTRUE, 0); // flag if we've been told to stop
+      auto bytepos = ftell(fp);                       // the byte we read from; used later to identify where music started
       nbuf += fread(buf + nbuf, 1, to_read, fp);      // read from file into buffer
       if (nbuf == 0) break;                           // end of file
       short pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];       // this will receive the decoded data for output
@@ -321,15 +323,15 @@ void mp3_task(void *arg){
         if (!is_output_started) {                     // start output stream when we start getting samples from decoder
           output->set_frequency(info.hz);
           is_output_started = true;
+          auto filepos = ftell(fp);
+          fseek(fp, 0, SEEK_END);       // move to end of file
+          auto filesize = ftell(fp);    // get position from end of file
+          fseek(fp, filepos, SEEK_SET); // return to where we were
+          Serial.printf("%d samples, %d Hz, %d frame bytes, audio from byte %d to %d\n", samples, info.hz, info.frame_bytes, bytepos, filesize);
           if(d->offset > 0) {                         // jump ahead if appropriate
             if(d->segment > 0) samples_cutoff = d->segment; // put a cap on how many samples to play
-            auto ftell1 = ftell(fp);
-            fseek(fp, 0, SEEK_END);
-            auto fsize = ftell(fp);
             int result = fseek(fp, d->offset, SEEK_SET); // seek to offset position for playing a segment
-            auto ftell2 = ftell(fp);
-            Serial.printf("%d samples, %d Hz, %d frame bytes\n", samples, info.hz, info.frame_bytes);
-            Serial.printf("file size %d, seeking to %d returned %d; before=%d, after=%d\n", fsize, d->offset, result, ftell1, ftell2);
+            Serial.printf("file size %d, seeking to %d returned %d; before=%d, after=%d\n", filesize, d->offset, result, filepos, ftell(fp));
             continue;
           }
         }
@@ -345,9 +347,12 @@ void mp3_task(void *arg){
         }
         output->write(pcm, samples);                  // write the decoded samples to the output
         samples_played += samples;                    // track how many samples have been output so we know when we hit our cutoff
+        bytes_played += info.frame_bytes;             // tracking how many bytes of audio we play for manual slicing calculations
       }
       vTaskDelay(pdMS_TO_TICKS(1));                   // feed the watchdog
     } while(info.frame_bytes && !is_output_ending);
+
+    Serial.printf("%d samples played at %dHz (%f seconds) from %d file bytes\n", samples_played, info.hz, (double)samples_played / (double)info.hz, bytes_played);
 
     fclose(fp);
     fp = NULL;
