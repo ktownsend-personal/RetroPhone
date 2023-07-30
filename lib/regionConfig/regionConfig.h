@@ -21,7 +21,9 @@ struct ToneConfig {
 
 class RegionConfig {
   public:
-    RegionConfig(regions region);
+    RegionConfig(regions regionToUse = region_northAmerica);
+    regions region;
+    String label;
     RingConfig ringer;
     ToneConfig dial;
     ToneConfig busy;

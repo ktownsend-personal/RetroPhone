@@ -63,6 +63,7 @@ void audioGenerator::changeRegion(RegionConfig region){
 void audioGenerator::stop(){
   if(x_handle == NULL) return;
   xTaskNotifyGive(x_handle); // tell the task to stop
+  x_handle = NULL;           // clear the handle
 }
 
 // plays the tone type as a task
@@ -276,13 +277,12 @@ void tone_task(void *arg){
         }
         output->write(pcm, toGenerate);                           // write the tone samples to the output
         vTaskDelay(pdMS_TO_TICKS(10));                            // feed the watchdog
-        is_output_ending = ulTaskNotifyTake(pdTRUE, 0);           // check if told to stop
+        is_output_ending |= ulTaskNotifyTake(pdTRUE, 0);          // check if told to stop
       };
     } while(--segmentCount > 0 && !is_output_ending);             // finished segments if decremented count is 0
   } while(d->iterations-- != 1 && !is_output_ending);             // finished iterations if we just did iteration 1 (0=forever)
 
   //cleanup and terminate
-  x_handle = NULL;
   vTaskDelete(NULL);
 }
 
@@ -310,7 +310,7 @@ void mp3_task(void *arg){
     unsigned long bytes_played = 0;
 
     do {
-      is_output_ending = ulTaskNotifyTake(pdTRUE, 0); // flag if we've been told to stop
+      is_output_ending |= ulTaskNotifyTake(pdTRUE, 0);// flag if we've been told to stop
       auto bytepos = ftell(fp);                       // the byte we read from; used later to identify where music started
       nbuf += fread(buf + nbuf, 1, to_read, fp);      // read from file into buffer
       if (nbuf == 0) break;                           // end of file
@@ -323,15 +323,15 @@ void mp3_task(void *arg){
         if (!is_output_started) {                     // start output stream when we start getting samples from decoder
           output->set_frequency(info.hz);
           is_output_started = true;
-          auto filepos = ftell(fp);
-          fseek(fp, 0, SEEK_END);       // move to end of file
-          auto filesize = ftell(fp);    // get position from end of file
-          fseek(fp, filepos, SEEK_SET); // return to where we were
-          Serial.printf("%d samples, %d Hz, %d frame bytes, audio from byte %d to %d\n", samples, info.hz, info.frame_bytes, bytepos, filesize);
+          // auto filepos = ftell(fp);
+          // fseek(fp, 0, SEEK_END);       // move to end of file
+          // auto filesize = ftell(fp);    // get position from end of file
+          // fseek(fp, filepos, SEEK_SET); // return to where we were
+          // Serial.printf("%d samples, %d Hz, %d frame bytes, audio from byte %d to %d\n", samples, info.hz, info.frame_bytes, bytepos, filesize);
           if(d->offset > 0) {                         // jump ahead if appropriate
             if(d->segment > 0) samples_cutoff = d->segment; // put a cap on how many samples to play
             int result = fseek(fp, d->offset, SEEK_SET); // seek to offset position for playing a segment
-            Serial.printf("file size %d, seeking to %d returned %d; before=%d, after=%d\n", filesize, d->offset, result, filepos, ftell(fp));
+            // Serial.printf("file size %d, seeking to %d returned %d; before=%d, after=%d\n", filesize, d->offset, result, filepos, ftell(fp));
             continue;
           }
         }
@@ -352,7 +352,7 @@ void mp3_task(void *arg){
       vTaskDelay(pdMS_TO_TICKS(1));                   // feed the watchdog
     } while(info.frame_bytes && !is_output_ending);
 
-    Serial.printf("%d samples played at %dHz (%f seconds) from %d file bytes\n", samples_played, info.hz, (double)samples_played / (double)info.hz, bytes_played);
+    // Serial.printf("%d samples played at %dHz (%f seconds) from %d file bytes\n", samples_played, info.hz, (double)samples_played / (double)info.hz, bytes_played);
 
     fclose(fp);
     fp = NULL;
@@ -363,6 +363,5 @@ void mp3_task(void *arg){
   if(fp) fclose(fp);
   fp = NULL;
   spiffs.~SPIFFS();
-  x_handle = NULL;
   vTaskDelete(NULL);
 }

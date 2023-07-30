@@ -1,8 +1,9 @@
 #include "regionConfig.h"
 
-RegionConfig::RegionConfig(regions region){
+RegionConfig::RegionConfig(regions regionToUse){
 
   // common settings for all regions
+  region         = regionToUse;
   howl.freqs     = new int[5]{4, 1400, 2060, 2450, 2600};
   howl.cadence   = new int[3]{2, 100, 100};
   howl.gain      = 2; // override gain for howler
@@ -12,8 +13,9 @@ RegionConfig::RegionConfig(regions region){
   err.cadence    = new int[3]{2, 150, 100};
   err.gain       = 2;
 
-  switch(region){
+  switch(regionToUse){
     case region_unitedKingdom:
+      label          = "United Kingdom";
       ringer.freq    = 25;
       ringer.cadence = new int[5]{4, 400, 200, 400, 2000};
       dial.freqs     = new int[3]{2, 350, 450};
@@ -24,6 +26,7 @@ RegionConfig::RegionConfig(regions region){
       busy.cadence   = new int[3]{2, 375, 375};
       break;
     case region_northAmerica:
+      label          = "North America";
       ringer.freq    = 20;
       ringer.cadence = new int[3]{2, 2000, 4000};
       dial.freqs     = new int[3]{2, 350, 440};

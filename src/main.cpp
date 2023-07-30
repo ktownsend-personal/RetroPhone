@@ -62,6 +62,12 @@ void setup() {
   modeStart(mode); // set initial mode
 }
 
+// this will wait the number of milliseconds specified, or until user hangs up
+void wait(unsigned int milliseconds){
+  auto until = millis() + milliseconds;
+  while(millis() < until) if(!digitalRead(PIN_SHK)) break;
+}
+
 void existsDTMF_module(){
   // DTMF module present?
   bool dtmfHardwareExists = testDTMF_module(40, 40, true);
@@ -70,8 +76,7 @@ void existsDTMF_module(){
     Serial.println("Hardware DTMF module not detected. Auto-switching to software DTMF.");
   };
   // delay a bit to allow DTMF "D" to finish so we don't detect as dialing it if user has phone off the hook
-  auto until = millis() + 50;
-  while(millis() < until);
+  wait(50);
 }
 
 // test DTMF module response at given tone and space times
@@ -124,9 +129,9 @@ void settingsInit(){
   Serial.printf("Using %s DTMF detection. Dial *20 for hardware, *21 for software.\n", dtmfmode ? "software" : "hardware");
   softwareDTMF = dtmfmode;
   regions r = (regions)prefs.getInt("region", (int)region_northAmerica);
-  Serial.printf("Using %s sounds and ring style. Dial *11 for North America, *12 for United Kingdom.\n", r == region_northAmerica ? "North America" : "United Kingdom");
   region = RegionConfig(r);
   player.changeRegion(region);
+  Serial.printf("Using %s sounds and ring style. Dial *11 for North America, *12 for United Kingdom.\n", region.label.c_str());
   prefs.end();
 }
 
@@ -321,17 +326,23 @@ void digitReceivedCallback(char digit){
   Serial.print(digit);      // debug output show digits as they are received
   digits += digit;          // accumulate the digit
 
-  if(digits.length() == 1 && digits[0] == '0'){
-    modeGo(call_operator);
-  }else if(digits.length() == 3 && digits[0] == '*'){
-    modeGo(system_config);
-  }else if(digits.length() == 4 && digits.substring(0, 2) == "22"){
-    // pulse dialing can't dial *, so we are using "22" as trigger and normalizing it to * for system_config mode
-    digits = String("*") + digits.substring(2);
-    modeGo(system_config);
-  }else if(digits.length() == 7){
-    modeGo(call_connecting);
+  auto dlen = digits.length();
+
+  // convert 22 to * for pulse dialing alternate star-code
+  if(dlen > 1 && digits.substring(0, 2) == "22") digits = String("*") + digits.substring(2);
+
+  auto d0 = digits[0];
+  auto d1 = digits[1];
+
+  if(dlen == 1 && d0 == '0') return modeGo(call_operator);
+
+  if(d0 == '*'){
+    if(d1 == '5' && dlen < 4) return; // need 4 digits for menu 5
+    if(dlen < 3) return;              // need 3 digits for all other menus
+    return modeGo(system_config);
   }
+  
+  if(dlen == 7) return modeGo(call_connecting);
 }
 
 void configureByNumber(String starcode){
@@ -340,15 +351,20 @@ void configureByNumber(String starcode){
   bool changed = false;
   if(starcode[0] != '*') return;
   switch(starcode[1]){
+
     case '1': // change region
       switch(starcode[2]){
+        case '0': // show current region
+          Serial.printf("region is %s", region.label.c_str());
+          success = true;
+          break;
         case '1': // region North America
           region = RegionConfig(region_northAmerica);
           player.changeRegion(region);
           prefs.begin("phone", false);
           prefs.putInt("region", region_northAmerica);
           prefs.end();
-          Serial.print("region changed to North America");
+          Serial.printf("region set to %s", region.label.c_str());
           success = true;
           break;
         case '2': // region United Kingdom
@@ -357,11 +373,12 @@ void configureByNumber(String starcode){
           prefs.begin("phone", false);
           prefs.putInt("region", region_unitedKingdom);
           prefs.end();
-          Serial.print("region changed to United Kingdom");
+          Serial.printf("region set to %s", region.label.c_str());
           success = true;
           break;
       }
       break;
+
     case '2': // select hardware or software DTMF
       switch(starcode[2]){
         case '0':
@@ -376,9 +393,9 @@ void configureByNumber(String starcode){
           break;
         case '2':
           player.playDTMF("D", 75, 0);
-          delay(100);
+          wait(100);
           Serial.print("cleared DTMF module LEDs");
-          return; // no need to do ack tone or print success message
+          return modeDefer(call_ready, 1000); // skip ack tone
       }
       if(changed){
         prefs.begin("phone", false);
@@ -387,74 +404,85 @@ void configureByNumber(String starcode){
       }
       if(success) Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
       break;
+
     case '3': {       // DTMF module speed test; last digit is max iterations, or zero to go until nothing reads successfully
       skipack = true; // must skip normal ack so the D tone at end of the loop can clear the module's LED's
       int start = 39;
       byte num = starcode[2] - '0';
-      int floor = (num == '0') ? 0 : (start - num);
+      int floor = (num == 0) ? 0 : (start - num);
       Serial.printf("testing DTMF module speed for maximum %d iterations...\n", start-floor);
       for(int duration = start; duration > floor; duration--)
         if(!testDTMF_module(duration, duration, false)) break;
       break;
     }
-    case '4': // mp3 test
-      Serial.println("Testing MP3 playback; hang up when done...");
+
+    case '4': {
+      //NOTE: managing the success tone and mode switch directly so we can get the timing right
+      auto play = [](String filepath, unsigned milliseconds)-> void {
+        Serial.printf("testing MP3 playback [%s]...", filepath.c_str());
+        player.playMP3(filepath);
+        wait(milliseconds + 500); // attempting to delay exactly the right amount of time before switching mode
+        player.playTone(player.zip, 1);
+        modeDefer(call_ready, 1000);
+      };
       switch(starcode[2]){
-        case '1':
-          player.playMP3("/fs/circuits-bell-f1.mp3");
-          break;
-        case '2':
-          player.playMP3("/fs/complete2-bell-f1.mp3");
-          break;
-        case '3':
-          player.playMP3("/fs/discoornis-bell-f1.mp3");
-          break;
-        case '4':
-          player.playMP3("/fs/timeout-bell-f1.mp3");
-          break;
-        case '5':
-          player.playMP3("/fs/complete5-xxx-anna.mp3");
-          break;
-        case '6':
-          player.playMP3("/fs/anna-1DSS-default-vocab.mp3");
-          break;
+        case '1': return play("/fs/circuits-xxx-anna.mp3",        7706);
+        case '2': return play("/fs/complete2-bell-f1.mp3",        8856);
+        case '3': return play("/fs/discoornis-bell-f1.mp3",       10109);
+        case '4': return play("/fs/timeout-bell-f1.mp3",          7367);
+        case '5': return play("/fs/svcoroption-xxx-anna.mp3",     12434);
+        case '6': return play("/fs/anna-1DSS-default-vocab.mp3",  26776);
+        case '7': return play("/fs/feature5-xxx-anna.mp3",        1881);
+        case '8': return play("/fs/feature6-xxx-anna.mp3",        1802);
       }
-      return; // make sure we don't play ack tone because it would interfere with the playback
-    case '5':
-      Serial.println("Testing MP3 slicing; hang up when done...");
-      switch(starcode[2]){
-        case '0':
-          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 4670, 23770);
-          break;
-        case '1':
-          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 8944, 18787);
-          break;
-        case '2':
-          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 12520, 18566);
-          break;
-        case '3':
-          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 16088, 19580);
-          break;
-        case '4':
-          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 19768, 17684);
-          break;
-        case '5':
-          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 23015, 27651);
-          break;
-        case '6':
-          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 28291, 23682);
-          break;
-        case '7':
-          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 32749, 18610);
-          break;
-        case '8':
-          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 36172, 18213);
-          break;
-        case '9':
-          player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, 39468, 25049);
-          break;
+    }
+
+    case '5': {
+      //NOTE: managing the success tone and mode switch directly so we can get the timing right
+      byte option = (starcode[2]-'0') * 10 + (starcode[3]-'0');
+      auto slice = [option](unsigned offset, unsigned samples, String label)-> void {
+        Serial.printf("testing MP3 slice [%s]...", label.c_str());
+        player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, offset, samples);
+        wait(samples/44.1 + 500); // attempting to delay exactly the right amount of time before switching mode
+        player.playTone(player.zip, 1);
+        modeDefer(call_ready, 1000);
+      };
+      switch(option){
+        case 0:  return slice(4670,   23770, "0");
+        case 1:  return slice(8944,   18787, "1");
+        case 2:  return slice(12520,  18566, "2");
+        case 3:  return slice(16088,  19580, "3");
+        case 4:  return slice(19768,  17684, "4");
+        case 5:  return slice(23015,  27651, "5");
+        case 6:  return slice(28291,  23682, "6");
+        case 7:  return slice(32749,  18610, "7");
+        case 8:  return slice(36172,  18213, "8");
+        case 9:  return slice(39468,  25049, "9");
+        case 10: return slice(44038,  23814, "0 (alternate)");
+        case 11: return slice(48391,  32810, "please note");
+        case 12: return slice(54373,  48334, "this is a recording");
+        case 13: return slice(63104,  52082, "has been changed");
+        case 14: return slice(72565,  68002, "the number you have dialed");
+        case 15: return slice(84929,  57065, "is not in service");
+        case 16: return slice(95336,  98343, "please check the number and dial again");
+        case 17: return slice(113184, 48334, "the number dialed");
+        case 18: return slice(121971, 57771, "the new number is");
+        case 19: return slice(132475, 31840, "enter function");
+        case 20: return slice(138263, 29547, "please enter");
+        case 21: return slice(143635, 33913, "area code");
+        case 22: return slice(149801, 27783, "new number");
+        case 23: return slice(154852, 27563, "invalid");
+        case 24: return slice(159864, 32414, "not available");
+        case 25: return slice(165757, 57418, "enter service code");
+        case 26: return slice(176196, 21344, "deleted");
+        case 27: return slice(180077, 28489, "category");
+        case 28: return slice(185256, 17993, "date");
+        case 29: return slice(188527, 25754, "re-enter");
+        case 30: return slice(193210, 20551, "thank you");
+        case 31: return slice(196946, 75499, "or dial directory assistance");
       }
-      return; // make sure we don't play ack tone because it would interfere with the playback
+    }
+
   }
 
   if(!skipack) {
