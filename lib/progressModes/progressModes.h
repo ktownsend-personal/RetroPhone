@@ -41,9 +41,11 @@ String modeNames[16] = {  // best way I found to translate modes to names for ou
   "configuring"
 };
 
-modes mode = call_idle;
-modes deferredMode;
-unsigned long deferModeUntil = 0;
+modes mode = call_idle;                       // current mode
+modes deferredMode;                           // mode to activate when deferredMode expires unless mode changes first
+unsigned long deferModeUntil = 0;             // milliseconds until deferred mode should be activated; cleared if mode changes first
+void (*deferAction)();                        // action to run when deferredAction expires unless mode changes first
+unsigned long deferActionUntil = 0;           // milliseconds until deferred action should be executed; cleared if mode changes first
 modes lastDebounceValue = call_idle;
 unsigned long lastDebounceTime = 0;
 const unsigned long debounceDelay = 80;       // 80ms minimum to ignore pulse dialing on snoopy phone, but 70ms was ok for my sony phone

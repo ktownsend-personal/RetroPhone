@@ -63,9 +63,24 @@ void setup() {
 }
 
 // this will wait the number of milliseconds specified, or until user hangs up
-void wait(unsigned int milliseconds){
+// returns true if user hung up, otherwise false
+bool wait(unsigned int milliseconds){
   auto until = millis() + milliseconds;
-  while(millis() < until) if(!digitalRead(PIN_SHK)) break;
+  while(millis() < until) if(!digitalRead(PIN_SHK)) return true;
+  return false;
+}
+
+// this will defer an action or abort if mode changes first
+void deferActionUnlessModeChange(unsigned int milliseconds,  void (*action)()){
+  deferAction = action;
+  deferActionUntil = millis() + milliseconds;
+}
+
+void deferActionCheckElapsed(){
+  if(deferActionUntil > 0 && deferActionUntil < millis()) {
+    deferActionUntil = 0;
+    deferAction();
+  }
 }
 
 void existsDTMF_module(){
@@ -126,18 +141,19 @@ void settingsInit(){
   delay(50);  // this delay resolved a timing issue accessing Preferences.h, but not sure what the timing issue actually is (filesystem not ready yet, or some other activity?)
   prefs.begin("phone", false);
   bool dtmfmode = prefs.getBool("dtmf", false);
-  Serial.printf("Using %s DTMF detection. Dial *20 for hardware, *21 for software.\n", dtmfmode ? "software" : "hardware");
+  Serial.printf("\tUsing %s DTMF detection. Dial *20 for hardware, *21 for software.\n", dtmfmode ? "software" : "hardware");
   softwareDTMF = dtmfmode;
   regions r = (regions)prefs.getInt("region", (int)region_northAmerica);
   region = RegionConfig(r);
   player.changeRegion(region);
-  Serial.printf("Using %s sounds and ring style. Dial *11 for North America, *12 for United Kingdom.\n", region.label.c_str());
+  Serial.printf("\tUsing %s sounds and ring style. Dial *11 for North America, *12 for United Kingdom.\n", region.label.c_str());
   prefs.end();
 }
 
 void loop() {
   modeRun(mode);                        // always run the current mode before modeDetect() because mode can change during modeRun()
   modeDeferCheck();                     // check if deferred mode ready to activate
+  deferActionCheckElapsed();            // check if a deferred action is waiting to run
   modes newmode = modeDetect();         // check inputs for new mode
   if(modeBouncing(newmode)) return;     // wait for bounce to settle
   if(newmode != mode) modeGo(newmode);  // switch to new mode
@@ -162,8 +178,10 @@ void modeDefer(modes deferMode, unsigned delay) {
 }
 
 void modeDeferCheck() {
-  if(deferModeUntil > 0 && deferModeUntil < millis()) 
+  if(deferModeUntil > 0 && deferModeUntil < millis()) {
+    deferModeUntil = 0;
     modeGo(deferredMode);
+  }
 }
 
 modes modeDetect() {
@@ -189,6 +207,7 @@ modes modeDetect() {
 void modeStop(modes oldmode) {
   Serial.println(); // end the mode line
   deferModeUntil = 0;
+  deferActionUntil = 0;
   switch(oldmode){
     case call_incoming:
       ringer.stop();
@@ -393,9 +412,9 @@ void configureByNumber(String starcode){
           break;
         case '2':
           player.playDTMF("D", 75, 0);
-          wait(100);
+          if (wait(100)) return; // wait or abort if user hangs up
           Serial.print("cleared DTMF module LEDs");
-          return modeDefer(call_ready, 1000); // skip ack tone
+          return modeDefer(call_ready, 500); // skip ack tone
       }
       if(changed){
         prefs.begin("phone", false);
@@ -421,7 +440,7 @@ void configureByNumber(String starcode){
       auto play = [](String filepath, unsigned milliseconds)-> void {
         Serial.printf("testing MP3 playback [%s]...", filepath.c_str());
         player.playMP3(filepath);
-        wait(milliseconds + 500); // attempting to delay exactly the right amount of time before switching mode
+        if (wait(milliseconds + 500)) return; // attempting to delay exactly the right amount of time before switching mode, but abort if user hangs up
         player.playTone(player.zip, 1);
         modeDefer(call_ready, 1000);
       };
@@ -443,7 +462,7 @@ void configureByNumber(String starcode){
       auto slice = [option](unsigned offset, unsigned samples, String label)-> void {
         Serial.printf("testing MP3 slice [%s]...", label.c_str());
         player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, offset, samples);
-        wait(samples/44.1 + 500); // attempting to delay exactly the right amount of time before switching mode
+        if (wait(samples/44.1 + 500)) return; // attempting to delay exactly the right amount of time before switching mode, but abort if user hangs up
         player.playTone(player.zip, 1);
         modeDefer(call_ready, 1000);
       };

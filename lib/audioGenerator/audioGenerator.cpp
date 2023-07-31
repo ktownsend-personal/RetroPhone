@@ -1,10 +1,9 @@
 #include "Arduino.h"
 #include "audioGenerator.h"
 #include "regionConfig.h"
-#include "Oscil.h"                // oscillator template from Mozzi
+#include "Oscil.h"                // oscillator template class from Mozzi
 #include "tables/sin2048_int8.h"  // sine table for oscillator from Mozzi
 #include "SPIFFS.h"
-#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "DACOutput.h"
@@ -15,11 +14,17 @@
 #define MINIMP3_NO_STDIO
 #include "minimp3.h"
 
-#define CHUNK 576 // this works out to 17.58ms of samples based on AUDIO_RATE of 32768; copied what mp3 decoder chunks at
+#define CHUNK 576 // this works out to 17.58ms of samples based on AUDIO_RATE of 32768; copied what mp3 decoder chunks at but there might be a better value
+
 //QUESTION: what does I2S do if we are feeding samples faster than they are played? It times out and skips whatever didn't fit.
+//QUESTION: what does I2S do if we stop feeding samples? Does it repeat the current buffer indefinitely?
 
 //TODO: what is causing the clicking when the task exits? or is it when DAC finishes samples? Are transitions too abrupt? Do we need constant zeros feeding DAC? Look at signal on scope.
-//TODO: implement playback-sequencing, such as different mp3 segments and/or tones + mp3
+//SOLVED: what is causing the extra blip of dialtone when hanging up? It's the SLIC briefly interrupting audio on the output (we are listening to SLIC out, not ESP32 out)
+//TODO: implement playback-sequencing, such as different mp3 segments and/or tones + mp3 (how can we have different config structs in a list? C++ seems difficult)
+//TODO: implement a way to notify main loop that a sequence is done playing
+//        maybe an anonymous callback function provided when starting playback so we can do specific things as needed, but threadsafe? Maybe just a flag the loop can watch?
+//        maybe enhance wait(ms) in main.cpp to be more of a defer(ms, callback) that blocks until mode change or audio completion (should mode change abort callback?)
 
 const int BUFFER_SIZE = 1024;
 byte core;
@@ -250,6 +255,7 @@ void tone_task(void *arg){
   toneDef* d = (toneDef*)arg;                                     // convert void arg to the right type
   bool is_output_started = false;
   bool is_output_ending = false;
+  short lastSample;
 
   do {                                                            // run the iterations
     auto segmentCount = d->segmentCount;                          // segments remaining to run
@@ -278,9 +284,18 @@ void tone_task(void *arg){
         output->write(pcm, toGenerate);                           // write the tone samples to the output
         vTaskDelay(pdMS_TO_TICKS(10));                            // feed the watchdog
         is_output_ending |= ulTaskNotifyTake(pdTRUE, 0);          // check if told to stop
+        lastSample = pcm[toGenerate*2];                           // track last sample to feed antipop() when we finish
       };
     } while(--segmentCount > 0 && !is_output_ending);             // finished segments if decremented count is 0
   } while(d->iterations-- != 1 && !is_output_ending);             // finished iterations if we just did iteration 1 (0=forever)
+
+  // testing to see if this helps with clicks at end of audio (replicate for start if we figure it out)
+  // REF: this thread is closest I've found to others having the issue, but not solved: https://github.com/earlephilhower/ESP8266Audio/issues/406
+  // REF: this looks interesting... try gradually going to max value instead of min value: https://github.com/earlephilhower/ESP8266Audio/issues/367#issuecomment-1180460464
+  // short silence[4096*2] = { };
+  // for(int i = 0; i < 4096*2; silence[i++] = 128 << 8);
+  // output->write(silence, 4096);
+  antipop(lastSample);
 
   //cleanup and terminate
   vTaskDelete(NULL);
@@ -364,4 +379,23 @@ void mp3_task(void *arg){
   fp = NULL;
   spiffs.~SPIFFS();
   vTaskDelete(NULL);
+}
+
+void antipop(short lastSample){
+  short len = 2048;
+  short ramp[len*2];
+  short start = lastSample >> 8;
+  short range = 127 - start;
+  float step = range/(float)len;
+  for(int i = 0; i < len; i++){
+    short sample = (short)((i*step)+start);
+    ramp[i*2] = sample << 8;
+    ramp[i*2+1] = sample << 8;
+  }
+  output->write(ramp, len);
+  Serial.printf("lastSample=%d, range=%d, step=%f, samples=%d, ramp=[%d..%d]\n", start, range, step, len, ramp[0]>>8, ramp[(len-1)*2]>>8);
+  // for(int i = 0; i < len; i++){
+  //   Serial.printf("%d,",ramp[i*2]>>8);
+  // }
+  // Serial.println("]");
 }
