@@ -385,10 +385,10 @@ void antipop(short lastSample){
   short len = 2048;
   short ramp[len*2];
   short start = lastSample >> 8;
-  short range = 127 - start;
+  short range = 128 + start;
   float step = range/(float)len;
   for(int i = 0; i < len; i++){
-    short sample = (short)((i*step)+start);
+    short sample = start-(short)((i*step));
     ramp[i*2] = sample << 8;
     ramp[i*2+1] = sample << 8;
   }
