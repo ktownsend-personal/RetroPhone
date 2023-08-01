@@ -85,7 +85,7 @@ void deferActionCheckElapsed(){
 
 void existsDTMF_module(){
   // DTMF module present?
-  bool dtmfHardwareExists = testDTMF_module(40, 40, true);
+  bool dtmfHardwareExists = testDTMF_module(40, 40, true, true);
   if(!dtmfHardwareExists && !softwareDTMF) {
     softwareDTMF = true;
     Serial.println("Hardware DTMF module not detected. Auto-switching to software DTMF.");
@@ -95,7 +95,7 @@ void existsDTMF_module(){
 }
 
 // test DTMF module response at given tone and space times
-bool testDTMF_module(int toneTime, int spaceTime, bool showSend){
+bool testDTMF_module(int toneTime, int spaceTime, bool showSend, bool ignoreSHK){
   // testing DTMF module by playing tones ourselves and checking pin responses
   // The module may give a read during the space or even overlap into the next digit, so we must 
   // detect reads independently of playing tones and run the loop extra iterations after finished.
@@ -114,6 +114,7 @@ bool testDTMF_module(int toneTime, int spaceTime, bool showSend){
       byte tone = 0x00 | (digitalRead(PIN_Q1) << 0) | (digitalRead(PIN_Q2) << 1) | (digitalRead(PIN_Q3) << 2) | (digitalRead(PIN_Q4) << 3);
       reads += dtmfmod.tone2char(tone);
     }
+    if(!ignoreSHK && !digitalRead(PIN_SHK)) return false; // abort if user hangs up
   }
   int unread = digits.length() - reads.length();
   int misread = 0;
@@ -431,7 +432,7 @@ void configureByNumber(String starcode){
       int floor = (num == 0) ? 0 : (start - num);
       Serial.printf("testing DTMF module speed for maximum %d iterations...\n", start-floor);
       for(int duration = start; duration > floor; duration--)
-        if(!testDTMF_module(duration, duration, false)) break;
+        if(!testDTMF_module(duration, duration)) break;
       break;
     }
 

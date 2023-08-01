@@ -56,7 +56,7 @@ const unsigned long abandonMax = 1000 * 120;  // cumulative with timeout2Max; wh
 
 void settingsInit();
 void existsDTMF_module();
-bool testDTMF_module(int toneTime, int gapTime, bool showSend);
+bool testDTMF_module(int toneTime, int gapTime, bool showSend = false, bool ignoreSHK = false);
 bool modeBouncing(modes);
 void modeDefer(modes deferMode, unsigned delay);
 void modeDeferCheck();
