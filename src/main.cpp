@@ -412,9 +412,9 @@ void configureByNumber(String starcode){
           break;
         case '2':
           player.playDTMF("D", 75, 0);
-          if (wait(100)) return; // wait or abort if user hangs up
+          if (wait(500)) return; // wait or abort if user hangs up
           Serial.print("cleared DTMF module LEDs");
-          return modeDefer(call_ready, 500); // skip ack tone
+          return modeGo(call_ready); // skip ack tone
       }
       if(changed){
         prefs.begin("phone", false);

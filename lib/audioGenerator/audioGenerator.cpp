@@ -92,7 +92,7 @@ void audioGenerator::playDTMF(String digits, unsigned toneTime, unsigned spaceTi
   td.segmentCount = 0;
   for(auto digit : digits){
     addSegmentDTMF(&td, digit, toneTime);
-    addSegmentSilent(&td, spaceTime);
+    if(spaceTime > 0) addSegmentSilent(&td, spaceTime);
   }
 
   xTaskCreatePinnedToCore(tone_task, "dtmf", 32768, (void*)&td, 1, &x_handle, core);
@@ -302,7 +302,6 @@ void tone_task(void *arg){
   // for(int i = 0; i < 4096*2; silence[i++] = 128 << 8);
   // output->write(silence, 4096);
   antipopFinish(lastSample);
-  output->clear_buffer();                                         // start with empty buffer to see if that helps with min going to zero and back to min when previous tone was shorter than buffer
 
   //cleanup and terminate
   if(x_handle == xTaskGetCurrentTaskHandle()) x_handle = NULL; // clear our own task handle if not already cleared or replaced
