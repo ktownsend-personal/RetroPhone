@@ -440,9 +440,9 @@ void configureByNumber(String starcode){
       auto play = [](String filepath, unsigned milliseconds)-> void {
         Serial.printf("testing MP3 playback [%s]...", filepath.c_str());
         player.playMP3(filepath);
-        if (wait(milliseconds + 500)) return; // attempting to delay exactly the right amount of time before switching mode, but abort if user hangs up
+        if (wait(milliseconds + 800)) return; // attempting to delay exactly the right amount of time before switching mode, but abort if user hangs up
         player.playTone(player.zip, 1);
-        modeDefer(call_ready, 1000);
+        modeDefer(call_ready, 500);
       };
       switch(starcode[2]){
         case '1': return play("/fs/circuits-xxx-anna.mp3",        7706);
