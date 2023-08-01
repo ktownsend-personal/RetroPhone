@@ -19,8 +19,9 @@
 //QUESTION: what does I2S do if we are feeding samples faster than they are played? It times out and skips whatever didn't fit.
 //QUESTION: what does I2S do if we stop feeding samples? Does it repeat the current buffer indefinitely?
 
-//TODO: what is causing the clicking when the task exits? or is it when DAC finishes samples? Are transitions too abrupt? Do we need constant zeros feeding DAC? Look at signal on scope.
-//SOLVED: what is causing the extra blip of dialtone when hanging up? It's the SLIC briefly interrupting audio on the output (we are listening to SLIC out, not ESP32 out)
+//SOLVED: clicks/pops when starting and ending playback were caused by abrupt transition from a point on a 0-centered waveform immediately down to min value -128; see antipop functions
+//SOLVED: popping between howler segments was resolved by setting phase to 0 on the oscillators before starting the segment so the silence segments aren't flatlining whatever the last sample was
+//SOLVED: the extra blip of dialtone when hanging up only happens with a specific phone and not a real issue
 //TODO: implement playback-sequencing, such as different mp3 segments and/or tones + mp3 (how can we have different config structs in a list? C++ seems difficult)
 //TODO: implement a way to notify main loop that a sequence is done playing
 //        maybe an anonymous callback function provided when starting playback so we can do specific things as needed, but threadsafe? Maybe just a flag the loop can watch?
