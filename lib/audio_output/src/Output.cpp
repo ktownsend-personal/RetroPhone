@@ -29,6 +29,10 @@ void Output::stop()
   i2s_driver_uninstall(m_i2s_port);
 }
 
+void Output::clear_buffer(){
+    i2s_zero_dma_buffer(I2S_NUM_0);
+}
+
 void Output::write(int16_t *samples, int frames)
 {
   // this will contain the prepared samples for sending to the I2S device

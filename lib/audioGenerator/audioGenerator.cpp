@@ -283,6 +283,7 @@ void tone_task(void *arg){
           pcm[x*2+1] = pcm[x*2];                                  // right channel at every odd index, copy from left channel
         }
         if (!is_output_started) {                                 // start output stream when we start getting samples from oscillators
+          output->clear_buffer();                                 // start with empty buffer to see if that helps with min going to zeor and back to min when previous tone was shorter than buffer
           output->set_frequency(AUDIO_RATE);                      // using Mozzi macro AUDIO_RATE = 32768 because it works; not sure what range is valid
           is_output_started = true;
           

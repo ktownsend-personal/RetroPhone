@@ -19,6 +19,7 @@ public:
   virtual ~Output();
   virtual void start(int sample_rate) = 0;
   void set_frequency(int sample_rate);
+  void clear_buffer();
   void stop();
   // override this in derived classes to turn the sample into
   // something the output device expects - for the default case
