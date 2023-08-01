@@ -268,7 +268,7 @@ void tone_task(void *arg){
       t2.setFreq(segment->freq2);
       t3.setFreq(segment->freq3);
       t4.setFreq(segment->freq4);
-      // starting phase at 0 each time makes the silence sample 0 instead of whatever we left off with on last tone
+      // starting phase at 0 each time makes the tones and gaps predictable and ensures gaps use 0 level instead of where the last tone left off
       t1.setPhase(0);
       t2.setPhase(0);
       t3.setPhase(0);
@@ -283,12 +283,9 @@ void tone_task(void *arg){
           pcm[x*2+1] = pcm[x*2];                                  // right channel at every odd index, copy from left channel
         }
         if (!is_output_started) {                                 // start output stream when we start getting samples from oscillators
-          output->clear_buffer();                                 // start with empty buffer to see if that helps with min going to zeor and back to min when previous tone was shorter than buffer
-          output->set_frequency(AUDIO_RATE);                      // using Mozzi macro AUDIO_RATE = 32768 because it works; not sure what range is valid
           is_output_started = true;
-          
-          antipopStart();
-
+          output->set_frequency(AUDIO_RATE);                      // using Mozzi macro AUDIO_RATE = 32768 because it works; not sure what range is valid
+          antipopStart();                                         // soften transition from min to zero
         }
         output->write(pcm, toGenerate);                           // write the tone samples to the output
         vTaskDelay(pdMS_TO_TICKS(10));                            // feed the watchdog
@@ -305,6 +302,7 @@ void tone_task(void *arg){
   // for(int i = 0; i < 4096*2; silence[i++] = 128 << 8);
   // output->write(silence, 4096);
   antipopFinish(lastSample);
+  output->clear_buffer();                                         // start with empty buffer to see if that helps with min going to zero and back to min when previous tone was shorter than buffer
 
   //cleanup and terminate
   if(x_handle == xTaskGetCurrentTaskHandle()) x_handle = NULL; // clear our own task handle if not already cleared or replaced
@@ -349,9 +347,7 @@ void mp3_task(void *arg){
         if (!is_output_started) {                     // start output stream when we start getting samples from decoder
           output->set_frequency(info.hz);
           is_output_started = true;
-          
           antipopStart();
-
           // auto filepos = ftell(fp);
           // fseek(fp, 0, SEEK_END);       // move to end of file
           // auto filesize = ftell(fp);    // get position from end of file
