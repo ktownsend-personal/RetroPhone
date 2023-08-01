@@ -306,6 +306,7 @@ void tone_task(void *arg){
   antipopFinish(lastSample);
 
   //cleanup and terminate
+  if(x_handle == xTaskGetCurrentTaskHandle()) x_handle = NULL; // clear our own task handle if not already cleared or replaced
   vTaskDelete(NULL);
 }
 
@@ -393,6 +394,7 @@ void mp3_task(void *arg){
   if(fp) fclose(fp);
   fp = NULL;
   spiffs.~SPIFFS();
+  if(x_handle == xTaskGetCurrentTaskHandle()) x_handle = NULL; // clear our own task handle if not already cleared or replaced
   vTaskDelete(NULL);
 }
 
