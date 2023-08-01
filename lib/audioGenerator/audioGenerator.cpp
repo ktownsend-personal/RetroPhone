@@ -407,7 +407,7 @@ void antipopStart(){
     ramp[i*2+1] = sample << 8;
   }
   output->write(ramp, len);
-  Serial.printf("start=%d, range=%d, step=%f, samples=%d, ramp=[%d..%d]\n", start, range, step, len, ramp[0]>>8, ramp[(len-1)*2]>>8);
+  // Serial.printf("start=%d, range=%d, step=%f, samples=%d, ramp=[%d..%d]\n", start, range, step, len, ramp[0]>>8, ramp[(len-1)*2]>>8);
 }
 
 void antipopFinish(short lastSample){
