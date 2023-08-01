@@ -265,9 +265,13 @@ void tone_task(void *arg){
       unsigned long samples = CHUNK;
       if(segment->duration > 0) samples = (unsigned long)AUDIO_RATE / (float)((float)1000/(float)segment->duration); // calculate number of samples to achieve duration
       t1.setFreq(segment->freq1);
+      t1.setPhase(0);
       t2.setFreq(segment->freq2);
+      t2.setPhase(0);
       t3.setFreq(segment->freq3);
+      t3.setPhase(0);
       t4.setFreq(segment->freq4);
+      t4.setPhase(0);
       while(samples > 0 && !is_output_ending) {                   // generate the samples in chunks
         short pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];                 // this holds the samples we want to give to I2S
         auto toGenerate = (samples > CHUNK) ? CHUNK : samples;    // determine chunk size
