@@ -265,12 +265,13 @@ void tone_task(void *arg){
       unsigned long samples = CHUNK;
       if(segment->duration > 0) samples = (unsigned long)AUDIO_RATE / (float)((float)1000/(float)segment->duration); // calculate number of samples to achieve duration
       t1.setFreq(segment->freq1);
-      t1.setPhase(0);
       t2.setFreq(segment->freq2);
-      t2.setPhase(0);
       t3.setFreq(segment->freq3);
-      t3.setPhase(0);
       t4.setFreq(segment->freq4);
+      // starting phase at 0 each time makes the silence sample 0 instead of whatever we left off with on last tone
+      t1.setPhase(0);
+      t2.setPhase(0);
+      t3.setPhase(0);
       t4.setPhase(0);
       while(samples > 0 && !is_output_ending) {                   // generate the samples in chunks
         short pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];                 // this holds the samples we want to give to I2S
@@ -278,7 +279,7 @@ void tone_task(void *arg){
         if(segment->duration != 0) samples -= toGenerate;         // only decrement chunk size if not an infinite segment
         for(int x = 0; x < toGenerate; x++){                      // fill frame buffer with samples
           auto sample = MonoOutput::from8Bit(((t1.next() + t2.next() + t3.next() + t4.next()) >> 3)); // generate and sum a single sample from each oscillator
-          pcm[x*2] = sample.l() << 8;                             // left channel at every even index, shifted to upper 8 bits of 16 bit value (DAC only reads upper 8 bits)
+          pcm[x*2] = sample.l() << 8;                             // left channel at every even index, shifted to upper 8 bits of 16 bit value (onboard DAC only reads upper 8 bits)
           pcm[x*2+1] = pcm[x*2];                                  // right channel at every odd index, copy from left channel
         }
         if (!is_output_started) {                                 // start output stream when we start getting samples from oscillators
@@ -396,7 +397,7 @@ void mp3_task(void *arg){
 }
 
 void antipopStart(){
-  short len = 128;
+  short len = 256;
   short ramp[len*2];
   short start = -128;
   short range = 128;
@@ -411,7 +412,7 @@ void antipopStart(){
 }
 
 void antipopFinish(short lastSample){
-  short len = 128;
+  short len = 256;
   short ramp[len*2];
   short start = lastSample >> 8;
   short range = 128 + start;
