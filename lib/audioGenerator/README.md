@@ -5,4 +5,4 @@ I really like the FreeRTOS task approach I found in the original example, which 
 ## TODO
 * stitch tones and mp3's together in one playback (i.e., replicating the stepped tones at start of a recording)
 * notification mechanism back to main loop that a playback is finished to improve coordination of modes
-* playing slices of mp3 files, such as the numbers file or the prhase segments file
+* playing slices of mp3 files, such as the numbers file or the prhase segments file (this is mostly done)

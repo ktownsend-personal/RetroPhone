@@ -61,6 +61,8 @@ There is a lot of info in this README, but also some useful stuff in the [docs f
   * able to play mp3 files from internal flash so we can fit more recorded messages and manage them more easily
 * dialing any 7-digit number will play ring or busy sound depending on first digit even or odd (temporary demo until far enough along to establish calls between two devices)
 * RGB LED for status colors & patterns representing all of the call states
+* mp3 playback for system messages and potentially other scenarios
+  * also able to play short slices from the middle of an mp3 file for a future sequencing feature, such as reading out the number you dialed during a system message
 
 ## Next Steps
 * call progress recorded messages
