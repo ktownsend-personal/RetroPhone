@@ -284,7 +284,7 @@ void tone_task(void *arg){
         output->write(pcm, toGenerate);                           // write the tone samples to the output
         vTaskDelay(pdMS_TO_TICKS(10));                            // feed the watchdog
         is_output_ending |= ulTaskNotifyTake(pdTRUE, 0);          // check if told to stop
-        lastSample = pcm[toGenerate*2];                           // track last sample to feed antipop() when we finish
+        lastSample = pcm[(toGenerate-1)*2];                           // track last sample to feed antipop() when we finish
       };
     } while(--segmentCount > 0 && !is_output_ending);             // finished segments if decremented count is 0
   } while(d->iterations-- != 1 && !is_output_ending);             // finished iterations if we just did iteration 1 (0=forever)
@@ -382,7 +382,7 @@ void mp3_task(void *arg){
 }
 
 void antipop(short lastSample){
-  short len = 2048;
+  short len = 128;
   short ramp[len*2];
   short start = lastSample >> 8;
   short range = 128 + start;
@@ -393,7 +393,7 @@ void antipop(short lastSample){
     ramp[i*2+1] = sample << 8;
   }
   output->write(ramp, len);
-  Serial.printf("lastSample=%d, range=%d, step=%f, samples=%d, ramp=[%d..%d]\n", start, range, step, len, ramp[0]>>8, ramp[(len-1)*2]>>8);
+  // Serial.printf("lastSample=%d, range=%d, step=%f, samples=%d, ramp=[%d..%d]\n", start, range, step, len, ramp[0]>>8, ramp[(len-1)*2]>>8);
   // for(int i = 0; i < len; i++){
   //   Serial.printf("%d,",ramp[i*2]>>8);
   // }
