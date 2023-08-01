@@ -280,11 +280,14 @@ void tone_task(void *arg){
         if (!is_output_started) {                                 // start output stream when we start getting samples from oscillators
           output->set_frequency(AUDIO_RATE);                      // using Mozzi macro AUDIO_RATE = 32768 because it works; not sure what range is valid
           is_output_started = true;
+          
+          antipopStart();
+
         }
         output->write(pcm, toGenerate);                           // write the tone samples to the output
         vTaskDelay(pdMS_TO_TICKS(10));                            // feed the watchdog
         is_output_ending |= ulTaskNotifyTake(pdTRUE, 0);          // check if told to stop
-        lastSample = pcm[(toGenerate-1)*2];                           // track last sample to feed antipop() when we finish
+        lastSample = pcm[(toGenerate-1)*2];                       // track last sample to feed antipopFinish() when we finish
       };
     } while(--segmentCount > 0 && !is_output_ending);             // finished segments if decremented count is 0
   } while(d->iterations-- != 1 && !is_output_ending);             // finished iterations if we just did iteration 1 (0=forever)
@@ -295,7 +298,7 @@ void tone_task(void *arg){
   // short silence[4096*2] = { };
   // for(int i = 0; i < 4096*2; silence[i++] = 128 << 8);
   // output->write(silence, 4096);
-  antipop(lastSample);
+  antipopFinish(lastSample);
 
   //cleanup and terminate
   vTaskDelete(NULL);
@@ -307,6 +310,7 @@ void mp3_task(void *arg){
   FILE *fp;                                           // file handle
   bool is_output_ending = false;
   bool decrement = (d->iterations != 0);
+  short lastSample;
 
   do {
     fp = fopen(d->filepath.c_str(), "rb");            // open the file
@@ -338,6 +342,9 @@ void mp3_task(void *arg){
         if (!is_output_started) {                     // start output stream when we start getting samples from decoder
           output->set_frequency(info.hz);
           is_output_started = true;
+          
+          antipopStart();
+
           // auto filepos = ftell(fp);
           // fseek(fp, 0, SEEK_END);       // move to end of file
           // auto filesize = ftell(fp);    // get position from end of file
@@ -363,11 +370,14 @@ void mp3_task(void *arg){
         output->write(pcm, samples);                  // write the decoded samples to the output
         samples_played += samples;                    // track how many samples have been output so we know when we hit our cutoff
         bytes_played += info.frame_bytes;             // tracking how many bytes of audio we play for manual slicing calculations
+        lastSample = pcm[(samples-1)*2];              // track last sample to feed antipopFinish() when we finish
       }
       vTaskDelay(pdMS_TO_TICKS(1));                   // feed the watchdog
     } while(info.frame_bytes && !is_output_ending);
 
     // Serial.printf("%d samples played at %dHz (%f seconds) from %d file bytes\n", samples_played, info.hz, (double)samples_played / (double)info.hz, bytes_played);
+
+    antipopFinish(lastSample);
 
     fclose(fp);
     fp = NULL;
@@ -381,7 +391,22 @@ void mp3_task(void *arg){
   vTaskDelete(NULL);
 }
 
-void antipop(short lastSample){
+void antipopStart(){
+  short len = 128;
+  short ramp[len*2];
+  short start = -128;
+  short range = 128;
+  float step = range/(float)len;
+  for(int i = 0; i < len; i++){
+    short sample = start-(short)((i*step));
+    ramp[i*2] = sample << 8;
+    ramp[i*2+1] = sample << 8;
+  }
+  output->write(ramp, len);
+  Serial.printf("start=%d, range=%d, step=%f, samples=%d, ramp=[%d..%d]\n", start, range, step, len, ramp[0]>>8, ramp[(len-1)*2]>>8);
+}
+
+void antipopFinish(short lastSample){
   short len = 128;
   short ramp[len*2];
   short start = lastSample >> 8;

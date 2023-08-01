@@ -28,7 +28,8 @@ struct mp3Def {
 
 void tone_task(void *arg);
 void mp3_task(void *arg);
-void antipop(short lastSample);
+void antipopStart();
+void antipopFinish(short lastSample);
 
 class audioGenerator
 {
