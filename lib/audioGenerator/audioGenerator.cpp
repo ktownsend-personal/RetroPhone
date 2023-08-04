@@ -41,7 +41,7 @@ Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> t4(SIN2048_DATA);
     // refer to original example at https://github.com/atomic14/esp32-play-mp3-demo
     - add #include "I2SOutput.h"
     - change "output = new DACOutput()" to new I2SOutput(i2s_port_t, i2s_pin_config_t) 
-    - you will need to define i2s_port_t and i2s_pin_config_t values as found in original example
+    - you will need to define i2s_port_t and i2s_pin_config_t values as found in original example's config.h
     - set direction and level on the SD pin for your DAC if needed
 */
 
@@ -269,7 +269,7 @@ void tone_task(void *arg){
       t2.setFreq(segment->freq2);
       t3.setFreq(segment->freq3);
       t4.setFreq(segment->freq4);
-      // starting phase at 0 each time makes the tones and gaps predictable and ensures gaps use 0 level instead of where the last tone left off
+      // starting at phase 0 makes the tones and gaps predictable and ensures gaps are at mid-level instead of wherever the last tone left off
       t1.setPhase(0);
       t2.setPhase(0);
       t3.setPhase(0);
@@ -296,15 +296,7 @@ void tone_task(void *arg){
     } while(--segmentCount > 0 && !is_output_ending);             // finished segments if decremented count is 0
   } while(d->iterations-- != 1 && !is_output_ending);             // finished iterations if we just did iteration 1 (0=forever)
 
-  // testing to see if this helps with clicks at end of audio (replicate for start if we figure it out)
-  // REF: this thread is closest I've found to others having the issue, but not solved: https://github.com/earlephilhower/ESP8266Audio/issues/406
-  // REF: this looks interesting... try gradually going to max value instead of min value: https://github.com/earlephilhower/ESP8266Audio/issues/367#issuecomment-1180460464
-  // short silence[4096*2] = { };
-  // for(int i = 0; i < 4096*2; silence[i++] = 128 << 8);
-  // output->write(silence, 4096);
   antipopFinish(lastSample);
-
-  //cleanup and terminate
   if(x_handle == xTaskGetCurrentTaskHandle()) x_handle = NULL; // clear our own task handle if not already cleared or replaced
   vTaskDelete(NULL);
 }
@@ -381,7 +373,6 @@ void mp3_task(void *arg){
     // Serial.printf("%d samples played at %dHz (%f seconds) from %d file bytes\n", samples_played, info.hz, (double)samples_played / (double)info.hz, bytes_played);
 
     antipopFinish(lastSample);
-
     fclose(fp);
     fp = NULL;
     if(d->iterations != 1) vTaskDelay(pdMS_TO_TICKS(d->gapTime));     // wait specfied gapTime if not last iteration
@@ -395,6 +386,7 @@ void mp3_task(void *arg){
   vTaskDelete(NULL);
 }
 
+// use this at start of playback to ramp the DAC output from min-level to mid-level to avoid popping sound caused by rapid jump in level
 void antipopStart(){
   short len = 256;
   short ramp[len*2];
@@ -410,6 +402,7 @@ void antipopStart(){
   // Serial.printf("start=%d, range=%d, step=%f, samples=%d, ramp=[%d..%d]\n", start, range, step, len, ramp[0]>>8, ramp[(len-1)*2]>>8);
 }
 
+// use this at end of playback to ramp the DAC output from where it left off down to min-level to avoid popping sound caused by rapid jump in level
 void antipopFinish(short lastSample){
   short len = 256;
   short ramp[len*2];
