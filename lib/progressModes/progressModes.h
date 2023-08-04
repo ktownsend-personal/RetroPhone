@@ -42,6 +42,7 @@ String modeNames[16] = {  // best way I found to translate modes to names for ou
 };
 
 modes mode = call_idle;                       // current mode
+modes previousMode = call_idle;               // previous mode
 modes deferredMode;                           // mode to activate when deferredMode expires unless mode changes first
 unsigned long deferModeUntil = 0;             // milliseconds until deferred mode should be activated; cleared if mode changes first
 void (*deferAction)();                        // action to run when deferredAction expires unless mode changes first

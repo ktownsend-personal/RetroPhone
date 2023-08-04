@@ -103,7 +103,7 @@ bool testDTMF_module(int toneTime, int spaceTime, bool showSend, bool ignoreSHK)
   const String digits = "1234567890*#ABCD";
   String reads;
   bool checked = false;
-  if(showSend) Serial.printf("Testing DTMF module: %s", digits.c_str());
+  if(showSend) Serial.printf("\tTesting DTMF module: %s", digits.c_str());
   auto until = millis() + ((toneTime+spaceTime)*digits.length()) + 500;
   player.playDTMF(digits, toneTime, spaceTime);
   while(millis() < until){
@@ -245,7 +245,15 @@ void modeStart(modes newmode) {
       timeoutStart();
       break;
     case call_timeout1:
-      player.playMP3("/fs/timeout-bell-f1.mp3", 2, 2000);
+      switch(previousMode){
+        case call_tone_dialing:
+        case call_pulse_dialing:
+          player.playMP3("/fs/complete2-bell-f1.mp3", 2, 2000);
+          break;
+        default:
+          player.playMP3("/fs/timeout-bell-f1.mp3", 2, 2000);
+          break;
+      }
       break;
     case call_timeout2:
       player.playTone(player.howler);
@@ -312,6 +320,7 @@ void modeRun(modes mode){
 
 void modeGo(modes newmode){
   modeStop(mode);
+  previousMode = mode;
   mode = newmode;
   modeStart(newmode);
 }
