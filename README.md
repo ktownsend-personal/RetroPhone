@@ -14,12 +14,12 @@ There is a lot of info in this README, but also some useful stuff in the [docs f
 </p>
 
 ## Goals
-* [ ] Accurately replicate a real phone experience
+* [X] Accurately replicate a real phone experience
   * [x] physical ringing
   * [x] call progress tones
   * [x] rotary dialing (pulse dialing)
   * [X] tone dialing (DTMF)
-  * [ ] automated phone service messages
+  * [X] automated phone service messages
 * [ ] Dial a few phone numbers and get a simulated response from the "other end"
 * [ ] Call one of the other phones on display and talk to whoever answers
 
