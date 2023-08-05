@@ -25,12 +25,13 @@ class RegionConfig {
     regions region;
     String label;
     RingConfig ringer;
-    ToneConfig dial;
-    ToneConfig busy;
-    ToneConfig ring;
-    ToneConfig howl;
+    ToneConfig dialtone;
+    ToneConfig busytone;
+    ToneConfig ringback;
+    ToneConfig howler;
     ToneConfig zip;
     ToneConfig err;
+    ToneConfig reorder; // fast-busy
 };
 
 #endif

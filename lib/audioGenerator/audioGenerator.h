@@ -36,8 +36,9 @@ class audioGenerator
   public:
     enum tones {
       dialtone,
-      ringing,
+      ringback,
       busytone,
+      reorder,
       howler,
       zip,
       err

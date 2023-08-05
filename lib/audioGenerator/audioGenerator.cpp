@@ -86,6 +86,16 @@ void audioGenerator::playTone(tones tone, byte iterations){
 
 // plays the DTMF digits as a task
 void audioGenerator::playDTMF(String digits, unsigned toneTime, unsigned spaceTime){
+
+/*
+TODO: saw this about dBm levels here: https://people.ece.ubc.ca/edc/4550.fall2017/lec2.pdf
+• DTMF high-frequency tones are sent at a level of -4 to -9 dBm and lower-frequency tones are sent at a level about 2 dB lower
+• dial tone is a continuous tone having frequencies of 350 and 440 Hz at a level of −13 dBm
+• ringback tone is defined as comprising frequencies of 440 and 480 Hz at a level of −19 dBm and a cadence of 2 seconds ON and 4 seconds OFF
+• busy tone is defined as having frequency components of 480 and 620 Hz at a level of −24 dBm and a cadence of half a second ON and half a second OFF
+• reorder tone, also called “fast busy” tone, contains the same frequency components as busy tone at a similar level but with a cadence of 0.25 of a second on and 0.25 of a second off
+*/
+
   if(x_handle != NULL) stop();
 
   static toneDef td;
@@ -211,18 +221,13 @@ void audioGenerator::addSegmentDTMF(toneDef* def, char digit, unsigned toneTime)
 // add appropriate segments for the specified tone type and time
 void audioGenerator::addSegmentsTone(toneDef* def, tones tone){
   switch(tone){
-    case dialtone:
-      return addSegmentsToneConfig(def, mozziRegion.dial);
-    case ringing:
-      return addSegmentsToneConfig(def, mozziRegion.ring);
-    case busytone:
-      return addSegmentsToneConfig(def, mozziRegion.busy);
-    case howler:
-      return addSegmentsToneConfig(def, mozziRegion.howl);
-    case zip: 
-      return addSegmentsToneConfig(def, mozziRegion.zip);
-    case err:
-      return addSegmentsToneConfig(def, mozziRegion.err);
+    case dialtone:  return addSegmentsToneConfig(def, mozziRegion.dialtone);
+    case ringback:  return addSegmentsToneConfig(def, mozziRegion.ringback);
+    case busytone:  return addSegmentsToneConfig(def, mozziRegion.busytone);
+    case reorder:   return addSegmentsToneConfig(def, mozziRegion.reorder);
+    case howler:    return addSegmentsToneConfig(def, mozziRegion.howler);
+    case zip:       return addSegmentsToneConfig(def, mozziRegion.zip);
+    case err:       return addSegmentsToneConfig(def, mozziRegion.err);
   }
 }
 

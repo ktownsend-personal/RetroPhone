@@ -8,7 +8,7 @@ class toneHandler {
     enum tones {
       silent,
       dialtone,
-      ringing,
+      ringback,
       busytone,
       howler
     };

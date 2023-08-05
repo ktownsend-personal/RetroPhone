@@ -210,12 +210,8 @@ void modeStop(modes oldmode) {
   deferModeUntil = 0;
   deferActionUntil = 0;
   switch(oldmode){
-    case call_incoming:
-      ringer.stop();
-      break;
-    default:
-      player.stop();
-      break;
+    case call_incoming: return ringer.stop();
+    default:            return player.stop();
   }
 }
 
@@ -226,60 +222,37 @@ void modeStart(modes newmode) {
   status.show(newmode);
 
   switch(newmode){
-    case call_incoming:
-      ringer.start(region.ringer.freq, region.ringer.cadence);
-      break;
     case call_ready:
       digits = "";
       timeoutStart();
       hooker.start();
-      if(softwareDTMF) {
-        dtmfer.start();
-      } else {
-        dtmfmod.start();
-      }
       player.playTone(player.dialtone);
-      break;
-    case call_pulse_dialing:
-    case call_tone_dialing:
-      timeoutStart();
-      break;
+      return (softwareDTMF) ? dtmfer.start() : dtmfmod.start();
+    case call_connecting:
+      Serial.print(digits);
+      //TODO: implement real connection negotiation; this fake simulation is based on first digit
+      switch(digits[0] % 3){
+        case 0: return modeGo(call_ringing);
+        case 1: return modeGo(call_busy);
+        case 2: return modeGo(call_fail);
+      }
+      return;
     case call_timeout1:
       switch(previousMode){
         case call_tone_dialing:
-        case call_pulse_dialing:
-          player.playMP3("/fs/complete2-bell-f1.mp3", 2, 2000);
-          break;
-        default:
-          player.playMP3("/fs/timeout-bell-f1.mp3", 2, 2000);
-          break;
+        case call_pulse_dialing: return player.playMP3("/fs/complete2-bell-f1.mp3", 2, 2000);
       }
-      break;
-    case call_timeout2:
-      player.playTone(player.howler);
-      break;
-    case call_abandoned:
-      break;
-    case call_connecting:
-      Serial.print(digits);
-      //TODO: implement real connection negotiation; this fake simulation rings if first digit even, or busy if odd
-      if(digits[0] % 2== 0)
-        modeGo(call_ringing);
-      else
-        modeGo(call_busy);
-      break;
-    case call_ringing:
-      player.playTone(player.ringing);
-      break;
-    case call_busy:
-      player.playTone(player.busytone);
-      break;
-    case call_operator:
-      //TODO: handle operator simulation
-      break;
-    case system_config:
-      configureByNumber(digits);
-      break;
+      return player.playMP3("/fs/timeout-bell-f1.mp3", 2, 2000);
+    case call_timeout2:       return player.playTone(player.howler);
+    case call_incoming:       return ringer.start(region.ringer.freq, region.ringer.cadence);
+    case call_pulse_dialing:  return timeoutStart();
+    case call_tone_dialing:   return timeoutStart();
+    case call_ringing:        return player.playTone(player.ringback);
+    case call_busy:           return player.playTone(player.busytone);
+    case call_fail:           return player.playTone(player.reorder);
+    case system_config:       return configureByNumber(digits);
+    case call_operator:       return; //TODO: handle operator simulation
+    case call_abandoned:      return;
   }
 }
 
@@ -287,34 +260,21 @@ void modeRun(modes mode){
   status.run(); // update LED visualization
 
   switch(mode){
-    case call_incoming:
-      ringer.run();
-      break;
+    case call_incoming: 
+      return ringer.run();
     case call_ready:
-      if(softwareDTMF) {
-        dtmfer.run();   // software-DTMF is finicky with the loop because of how much time it takes to get samples
-      } else {
-        dtmfmod.run();  // hardware DTMF module works great
-      }
       hooker.run();
       timeoutCheck();
-      break;
+      return (softwareDTMF) ? dtmfer.run() : dtmfmod.run();
     case call_pulse_dialing:
       hooker.run();
-      timeoutCheck();
-      break;
+      return timeoutCheck();
     case call_tone_dialing:
-      if(softwareDTMF) {
-        dtmfer.run();   // software-DTMF is finicky with the loop because of how much time it takes to get samples
-      } else {
-        dtmfmod.run();  // hardware DTMF module works great
-      }
       timeoutCheck();
-      break;
+      return (softwareDTMF) ? dtmfer.run() : dtmfmod.run();
     case call_timeout1:
     case call_timeout2:
-      timeoutCheck();
-      break;
+      return timeoutCheck();
   }
 }
 

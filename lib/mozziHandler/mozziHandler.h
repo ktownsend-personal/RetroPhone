@@ -9,7 +9,7 @@ class mozziHandler
   public:
     enum tones {
       dialtone,
-      ringing,
+      ringback,
       busytone,
       howler,
       zip,

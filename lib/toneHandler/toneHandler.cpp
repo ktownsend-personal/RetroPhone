@@ -22,7 +22,7 @@ void toneHandler::run() {
     case dialtone:  // 350+440 Hz
       on(350);
       break;
-    case ringing:   // 440+480 Hz @ 2000/4000 ms
+    case ringback:   // 440+480 Hz @ 2000/4000 ms
       doCadence(440, 2, 2000, 4000);
       break;
     case howler:    // 1400+2060+2450+2600 Hz @ 100/100 ms

@@ -169,13 +169,13 @@ void mozziHandler::playTone(tones tone, byte iterations){
 
   switch(tone){
     case dialtone:
-      return toneStart(mozziRegion.dial);
-    case ringing:
-      return toneStart(mozziRegion.ring);
+      return toneStart(mozziRegion.dialtone);
+    case ringback:
+      return toneStart(mozziRegion.ringback);
     case busytone:
-      return toneStart(mozziRegion.busy);
+      return toneStart(mozziRegion.busytone);
     case howler:
-      return toneStart(mozziRegion.howl);
+      return toneStart(mozziRegion.howler);
     case zip: 
       return toneStart(mozziRegion.zip, iterations);
     case err:
