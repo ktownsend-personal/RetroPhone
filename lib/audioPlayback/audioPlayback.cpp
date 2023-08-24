@@ -14,20 +14,22 @@
 #define MINIMP3_NO_STDIO
 #include "minimp3.h"
 
-#define CHUNK 576 // this works out to 17.58ms of samples based on AUDIO_RATE of 32768; copied what mp3 decoder chunks at but there might be a better value
+#define CHUNK 576 // 17.58ms of samples based on AUDIO_RATE of 32768; copied what mp3 decoder chunks at but there might be a better value (mp3 decoder uses 576 for 22050Hz or 1152 for 44100Hz, which is 22.122ms)
 
-//NOTE: I2S buffer overrun: adding to buffer times out and skips whatever didn't fit
-//NOTE: I2S buffer underrun: repeats the current buffer (indefinitely?)
+//NOTE: I2S buffer overrun: 
+//      Adding to buffer times out and skips whatever didn't fit unless portMAX_DELAY given to i2s_write and then code blocks until all samples are written.
+//      This project uses portMAX_DELAY to avoid overrun.
 
-//SOLVED: clicks/pops when starting and ending playback were caused by abrupt transition from a point on a 0-centered waveform immediately down to min value -128; see antipop functions
+//NOTE: I2S buffer underrun: 
+//      I2S repeats the buffer indefinitely until new samples arrive unless i2s_config.tx_desc_auto_clear is true, then it drops level to -128 (0v output).
+//      This project uses i2s_config.tx_desc_auto_clear = false and stuffs the buffer with zeros when done feeding samples to avoid popping from instant transitions to/from 0v.
+
 //SOLVED: popping between howler segments was resolved by setting phase to 0 on the oscillators before starting the segment so the silence segments aren't flatlining whatever the last sample was
 //SOLVED: the extra blip of dialtone when hanging up appears to be happening in the SLIC and is only noticeable because we are playing SLIC output on external speaker
+
 //TODO: implement a way to notify main loop that a sequence is done playing
 //        maybe an anonymous callback function provided when starting playback so we can do specific things as needed, but threadsafe? Maybe just a flag the loop can watch?
 //        maybe enhance wait(ms) in main.cpp to be more of a defer(ms, callback) that blocks until mode change or audio completion (should mode change abort callback?)
-
-
-//TODO: figure out why this refactored code crashes!
 
 const int BUFFER_SIZE = 1024;
 byte core;
@@ -239,9 +241,6 @@ void audioPlayback::playMP3(String filepath, byte iterations, unsigned gapMS, un
 }
 
 void playback_task(void *arg){
-
-  //TODO: when we get this sequencing working perfectly we might be able to collapse the timeout modes into a single sequenced playback; might be able to sequence with dialtone if we don't need actual timeout status modes
-
   auto queue = (playbackQueue*)arg;
   do {                                                          // loop iterations
     for(byte idx = 0; idx < queue->arraySize; idx++){           // loop the queue
