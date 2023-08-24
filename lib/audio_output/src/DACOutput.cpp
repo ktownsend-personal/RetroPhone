@@ -14,7 +14,7 @@ void DACOutput::start(int sample_rate)
         .dma_buf_count = 4,
         .dma_buf_len = 1024,
         .use_apll = false,
-        .tx_desc_auto_clear = true,
+        .tx_desc_auto_clear = false, //true detects not feeding buffer and sets output to -128, but that creates a sharp transition (pop/click sound); when false we need to stuff the buffer with zeros when done feeding audio because I2S continues to play the buffer indefinitely
         .fixed_mclk = 0};
     //install and start i2s driver
     i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);

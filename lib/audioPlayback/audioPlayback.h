@@ -28,7 +28,7 @@ struct playbackQueue {
 void playback_task(void *arg);
 void playback_tone(playbackQueue *pq, playbackDef tone);
 void playback_mp3(playbackQueue *pq, playbackDef mp3);
-void antipop(short start, short finish);
+void antipop(short start, short finish, short len = 256);
 
 class audioPlayback
 {

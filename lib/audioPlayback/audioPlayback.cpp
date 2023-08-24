@@ -243,7 +243,6 @@ void playback_task(void *arg){
   //TODO: when we get this sequencing working perfectly we might be able to collapse the timeout modes into a single sequenced playback; might be able to sequence with dialtone if we don't need actual timeout status modes
 
   auto queue = (playbackQueue*)arg;
-  antipop(-128, 0);                                             // soften transition from I2S resting level to zero
   do {                                                          // loop iterations
     for(byte idx = 0; idx < queue->arraySize; idx++){           // loop the queue
       auto def = queue->defs[idx];
@@ -251,7 +250,7 @@ void playback_task(void *arg){
       if(def.filepath != "") playback_mp3(queue, def);          // play the mp3 segment
     }
   } while(queue->iterations-- != 1 && !queue->stopping);        // stop on last iteration (if iterations started at 0 then loop until notified to stop)
-  antipop(queue->lastSample >> 8, -128);                        // soften transition to I2S resting level
+  antipop(0, 0, 1024*4);                                        // stuff buffer with silence so I2S doesn't repeat remnants
   if(x_handle == xTaskGetCurrentTaskHandle()) x_handle = NULL;  // clear our own task handle if not already cleared or replaced
   vTaskDelete(NULL);                                            // self-delete the task when done
 }
@@ -360,8 +359,7 @@ void playback_mp3(playbackQueue *pq, playbackDef mp3){
 }
 
 // use this at start and end of playback to ramp the I2S output between resting level and zero level to avoid popping sounds from instant transitions
-void antipop(short start, short finish){
-  short len = 256;
+void antipop(short start, short finish, short len){
   short ramp[len*2];
   float step = (start - finish)/(float)len;
   for(int i = 0; i < len; i++){
