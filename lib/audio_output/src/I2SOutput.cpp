@@ -18,7 +18,12 @@ void I2SOutput::start(int sample_rate)
         .dma_buf_count = 4,
         .dma_buf_len = 1024,
         .use_apll = false,
-        .tx_desc_auto_clear = true,
+
+        // When true I2S detects not feeding buffer and sets output to 0v (-128), but that creates a sharp transition (pop/click sound).
+        // We are using false and stuffing the buffer with zeros when finished feeding audio to maintain 0 signal level rather than 0v level.
+        // This works because I2S continues to play the buffer loop indefinitely and will stay at 0 signal if that's what's in the buffer.
+        .tx_desc_auto_clear = false,
+
         .fixed_mclk = 0};
     //install and start i2s driver
     i2s_driver_install(m_i2s_port, &i2s_config, 0, NULL);
