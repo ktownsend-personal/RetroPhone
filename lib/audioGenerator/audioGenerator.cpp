@@ -16,12 +16,12 @@
 
 #define CHUNK 576 // this works out to 17.58ms of samples based on AUDIO_RATE of 32768; copied what mp3 decoder chunks at but there might be a better value
 
-//QUESTION: what does I2S do if we are feeding samples faster than they are played? It times out and skips whatever didn't fit.
-//QUESTION: what does I2S do if we stop feeding samples? Does it repeat the current buffer indefinitely?
+//NOTE: I2S buffer overrun: adding to buffer times out and skips whatever didn't fit
+//NOTE: I2S buffer underrun: repeats the current buffer (indefinitely?)
 
 //SOLVED: clicks/pops when starting and ending playback were caused by abrupt transition from a point on a 0-centered waveform immediately down to min value -128; see antipop functions
 //SOLVED: popping between howler segments was resolved by setting phase to 0 on the oscillators before starting the segment so the silence segments aren't flatlining whatever the last sample was
-//SOLVED: the extra blip of dialtone when hanging up only happens with a specific phone and not a real issue
+//SOLVED: the extra blip of dialtone when hanging up appears to be happening in the SLIC and is only noticeable because we are playing SLIC output on external speaker
 //TODO: implement playback-sequencing, such as different mp3 segments and/or tones + mp3 (how can we have different config structs in a list? C++ seems difficult)
 //TODO: implement a way to notify main loop that a sequence is done playing
 //        maybe an anonymous callback function provided when starting playback so we can do specific things as needed, but threadsafe? Maybe just a flag the loop can watch?
@@ -110,15 +110,15 @@ TODO: saw this about dBm levels here: https://people.ece.ubc.ca/edc/4550.fall201
 }
 
 // plays the MP3 file as a task
-void audioGenerator::playMP3(String filepath, byte iterations, unsigned gapTime, unsigned long offset, unsigned long segment){
+void audioGenerator::playMP3(String filepath, byte iterations, unsigned gapMS, unsigned long offsetBytes, unsigned long samplesToPlay){
   if(x_handle != NULL) stop();
 
   static mp3Def d;
   d.filepath = filepath;
   d.iterations = iterations;
-  d.gapTime = gapTime;
-  d.offset = offset;
-  d.segment = segment;
+  d.gapMS = gapMS;
+  d.offsetBytes = offsetBytes;
+  d.samplesToPlay = samplesToPlay;
 
   xTaskCreatePinnedToCore(mp3_task, "mp3", 32768, (void*)&d, 1, &x_handle, core);
 }
@@ -291,7 +291,7 @@ void tone_task(void *arg){
         if (!is_output_started) {                                 // start output stream when we start getting samples from oscillators
           is_output_started = true;
           output->set_frequency(AUDIO_RATE);                      // using Mozzi macro AUDIO_RATE = 32768 because it works; not sure what range is valid
-          antipopStart();                                         // soften transition from min to zero
+          antipop(-128, 0);                                       // soften transition from I2S resting level to zero
         }
         output->write(pcm, toGenerate);                           // write the tone samples to the output
         vTaskDelay(pdMS_TO_TICKS(10));                            // feed the watchdog
@@ -301,8 +301,8 @@ void tone_task(void *arg){
     } while(--segmentCount > 0 && !is_output_ending);             // finished segments if decremented count is 0
   } while(d->iterations-- != 1 && !is_output_ending);             // finished iterations if we just did iteration 1 (0=forever)
 
-  antipopFinish(lastSample);
-  if(x_handle == xTaskGetCurrentTaskHandle()) x_handle = NULL; // clear our own task handle if not already cleared or replaced
+  antipop(lastSample >> 8, -128);                                 // soften transition to I2S resting level
+  if(x_handle == xTaskGetCurrentTaskHandle()) x_handle = NULL;    // clear our own task handle if not already cleared or replaced
   vTaskDelete(NULL);
 }
 
@@ -344,16 +344,16 @@ void mp3_task(void *arg){
         if (!is_output_started) {                     // start output stream when we start getting samples from decoder
           output->set_frequency(info.hz);
           is_output_started = true;
-          antipopStart();
+          antipop(-128, 0);                           // soften transition from I2S resting level to zero level
           // auto filepos = ftell(fp);
           // fseek(fp, 0, SEEK_END);       // move to end of file
           // auto filesize = ftell(fp);    // get position from end of file
           // fseek(fp, filepos, SEEK_SET); // return to where we were
           // Serial.printf("%d samples, %d Hz, %d frame bytes, audio from byte %d to %d\n", samples, info.hz, info.frame_bytes, bytepos, filesize);
-          if(d->offset > 0) {                         // jump ahead if appropriate
-            if(d->segment > 0) samples_cutoff = d->segment; // put a cap on how many samples to play
-            int result = fseek(fp, d->offset, SEEK_SET); // seek to offset position for playing a segment
-            // Serial.printf("file size %d, seeking to %d returned %d; before=%d, after=%d\n", filesize, d->offset, result, filepos, ftell(fp));
+          if(d->offsetBytes > 0) {                         // jump ahead if appropriate
+            if(d->samplesToPlay > 0) samples_cutoff = d->samplesToPlay; // put a cap on how many samples to play
+            int result = fseek(fp, d->offsetBytes, SEEK_SET); // seek to offset position for playing a segment
+            // Serial.printf("file size %d, seeking to %d returned %d; before=%d, after=%d\n", filesize, d->offsetBytes, result, filepos, ftell(fp));
             continue;
           }
         }
@@ -363,8 +363,8 @@ void mp3_task(void *arg){
         }
         if (info.channels == 1) {                     // if mono make stereo by copying left channel
           for (int i = samples - 1; i >= 0; i--) {
-            pcm[i * 2] = pcm[i];
-            pcm[i * 2 - 1] = pcm[i];
+            pcm[i*2  ] = pcm[i];
+            pcm[i*2-1] = pcm[i];
           }
         }
         output->write(pcm, samples);                  // write the decoded samples to the output
@@ -377,10 +377,10 @@ void mp3_task(void *arg){
 
     // Serial.printf("%d samples played at %dHz (%f seconds) from %d file bytes\n", samples_played, info.hz, (double)samples_played / (double)info.hz, bytes_played);
 
-    antipopFinish(lastSample);
+    antipop(lastSample >> 8, -128);                   // soften transition from last sample to I2S resting level
     fclose(fp);
     fp = NULL;
-    if(d->iterations != 1) vTaskDelay(pdMS_TO_TICKS(d->gapTime));     // wait specfied gapTime if not last iteration
+    if(d->iterations != 1) vTaskDelay(pdMS_TO_TICKS(d->gapMS));       // wait specfied gapMS if not last iteration
   } while((!decrement || d->iterations-- != 1) && !is_output_ending); // iteration 1 is final, or 0 is infinite
 
   //cleanup and terminate
@@ -391,38 +391,15 @@ void mp3_task(void *arg){
   vTaskDelete(NULL);
 }
 
-// use this at start of playback to ramp the DAC output from min-level to mid-level to avoid popping sound caused by rapid jump in level
-void antipopStart(){
+// use this at start and end of playback to ramp the I2S output between resting level and zero level to avoid popping sounds from instant transitions
+void antipop(short start, short finish){
   short len = 256;
   short ramp[len*2];
-  short start = -128;
-  short range = 128;
-  float step = range/(float)len;
-  for(int i = 0; i < len; i++){
-    short sample = start+(short)((i*step));
-    ramp[i*2] = sample << 8;
-    ramp[i*2+1] = sample << 8;
-  }
-  output->write(ramp, len);
-  // Serial.printf("start=%d, range=%d, step=%f, samples=%d, ramp=[%d..%d]\n", start, range, step, len, ramp[0]>>8, ramp[(len-1)*2]>>8);
-}
-
-// use this at end of playback to ramp the DAC output from where it left off down to min-level to avoid popping sound caused by rapid jump in level
-void antipopFinish(short lastSample){
-  short len = 256;
-  short ramp[len*2];
-  short start = lastSample >> 8;
-  short range = 128 + start;
-  float step = range/(float)len;
+  float step = (start - finish)/(float)len;
   for(int i = 0; i < len; i++){
     short sample = start-(short)((i*step));
-    ramp[i*2] = sample << 8;
+    ramp[i*2  ] = sample << 8;
     ramp[i*2+1] = sample << 8;
   }
   output->write(ramp, len);
-  // Serial.printf("lastSample=%d, range=%d, step=%f, samples=%d, ramp=[%d..%d]\n", start, range, step, len, ramp[0]>>8, ramp[(len-1)*2]>>8);
-  // for(int i = 0; i < len; i++){
-  //   Serial.printf("%d,",ramp[i*2]>>8);
-  // }
-  // Serial.println("]");
 }

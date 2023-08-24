@@ -19,17 +19,16 @@ struct toneDef {
 };
 
 struct mp3Def {
-  byte iterations;
-  unsigned int gapTime;
   String filepath;
-  unsigned long offset;
-  unsigned long segment;
+  byte iterations;
+  unsigned int gapMS;
+  unsigned long offsetBytes;
+  unsigned long samplesToPlay;
 };
 
 void tone_task(void *arg);
 void mp3_task(void *arg);
-void antipopStart();
-void antipopFinish(short lastSample);
+void antipop(short start, short finish);
 
 class audioGenerator
 {
@@ -48,7 +47,7 @@ class audioGenerator
     ~audioGenerator();
     void changeRegion(RegionConfig region);
     void playTone(tones tone, byte iterations = 0);
-    void playMP3(String filepath, byte iterations = 1, unsigned gapTime = 0, unsigned long offset = 0, unsigned long segment = 0);
+    void playMP3(String filepath, byte iterations = 1, unsigned gapMS = 0, unsigned long offsetBytes = 0, unsigned long samplesToPlay = 0);
     void playDTMF(String digits, unsigned toneTime = 40, unsigned spaceTime = 40);
     void stop();
 
