@@ -1,8 +1,9 @@
 #include "Arduino.h"
 #include "audioPlayback.h"
 #include "regionConfig.h"
-#include "Oscil.h"                // oscillator template class from Mozzi
-#include "tables/sin2048_int8.h"  // sine table for oscillator from Mozzi
+#include "Oscil.h"                // oscillator template class (copied from Mozzi)
+// #include "tables/sin2048_int8.h"  // sine table for oscillator (from Mozzi)
+#include "sin2048_int8.h"         // sine table for oscillator (copied from Mozzi)
 #include "SPIFFS.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -14,7 +15,8 @@
 #define MINIMP3_NO_STDIO
 #include "minimp3.h"
 
-#define CHUNK 576 // 17.58ms of samples based on AUDIO_RATE of 32768; copied what mp3 decoder chunks at but there might be a better value (mp3 decoder uses 576 for 22050Hz or 1152 for 44100Hz, which is 22.122ms)
+#define AUDIO_RATE 32768 // default rate for ESP32
+#define CHUNK 576 // for tone generation; 17.58ms of samples based on AUDIO_RATE of 32768; copied what mp3 decoder chunks at but there might be a better value (mp3 decoder uses 576 for 22050Hz or 1152 for 44100Hz, which is 22.122ms)
 
 //NOTE: I2S buffer overrun: 
 //      Adding to buffer times out and skips whatever didn't fit unless portMAX_DELAY given to i2s_write and then code blocks until all samples are written.
@@ -262,9 +264,9 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
   t3.setFreq(tone.freq3); t3.setPhase(0);
   t4.setFreq(tone.freq4); t4.setPhase(0);
 
-  //TODO: setting this is causing a skip in the audio, so it must interfere with existing buffer immediately; this may be a problem when stitching different audio rates with mp3's and tones
+  //NOTE: be careful setting this when there is still audio in the buffer; even if rate is the same you will get a skip in the audio
   if(currentPlaybackRate != AUDIO_RATE) {
-    output->set_frequency(AUDIO_RATE);  // using Mozzi macro AUDIO_RATE = 32768 because it works; not sure what range is valid
+    output->set_frequency(AUDIO_RATE);
     currentPlaybackRate = AUDIO_RATE;
   }
 
@@ -276,15 +278,15 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
     auto toGenerate = (samples > CHUNK) ? CHUNK : samples;    // determine chunk size
     if(tone.duration != 0) samples -= toGenerate;             // only decrement chunk size if not an infinite segment
     for(int x = 0; x < toGenerate; x++){                      // fill frame buffer with samples
-      auto sum = t1.next() + t2.next() + t3.next() + t4.next();
-      auto sample = MonoOutput::from8Bit(sum >> 3);           // generate and sum a single sample from each oscillator
-      pcm[x*2] = sample.l() << 8;                             // left channel at every even index, shifted to upper 8 bits of 16 bit value (onboard DAC only reads upper 8 bits)
-      pcm[x*2+1] = pcm[x*2];                                  // right channel at every odd index, copy from left channel
+      auto sum = t1.next()+t2.next()+t3.next()+t4.next();     // sum the next sample from all oscillators together
+      auto sample = (sum >> 3) << 8;                          // bitshift 3 to reduce amplitude (because we summed 4 oscillators), then bitshift 8 to upper 8 bits (onboard DAC only reads upper 8 bits)
+      pcm[x*2]   = sample;                                    // left channel at even index
+      pcm[x*2+1] = sample;                                    // right channel at odd index
     }
     output->write(pcm, toGenerate);                           // write the tone samples to the output
+    pq->lastSample = pcm[(toGenerate-1)*2];                   // track last sample to feed antipopFinish() when we finish
     vTaskDelay(pdMS_TO_TICKS(10));                            // feed the watchdog
     pq->stopping |= ulTaskNotifyTake(pdTRUE, 0);              // check if told to stop
-    pq->lastSample = pcm[(toGenerate-1)*2];                   // track last sample to feed antipopFinish() when we finish
   };
 }
 
@@ -322,7 +324,7 @@ void playback_mp3(playbackQueue *pq, playbackDef mp3){
     if(samples){
       if (!is_output_started) {                     // start output stream when we start getting samples from decoder
         is_output_started = true;
-        //TODO: setting frequency might cause issues in the output stream that is still playing out...can we defer this to the right moment somehow?
+        //NOTE: be careful setting this when there is still audio in the buffer; even if rate is the same you will get a skip in the audio
         if(currentPlaybackRate != info.hz) {
           output->set_frequency(info.hz);
           currentPlaybackRate = info.hz;
@@ -357,14 +359,13 @@ void playback_mp3(playbackQueue *pq, playbackDef mp3){
   spiffs.~SPIFFS();
 }
 
-// use this at start and end of playback to ramp the I2S output between resting level and zero level to avoid popping sounds from instant transitions
 void antipop(short start, short finish, short len){
   short ramp[len*2];
   float step = (start - finish)/(float)len;
   for(int i = 0; i < len; i++){
-    short sample = start-(short)((i*step));
-    ramp[i*2  ] = sample << 8;
-    ramp[i*2+1] = sample << 8;
+    short sample = (start-(short)((i*step))) << 8;
+    ramp[i*2  ] = sample;
+    ramp[i*2+1] = sample;
   }
   output->write(ramp, len);
 }

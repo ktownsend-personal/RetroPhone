@@ -14,8 +14,8 @@
 #define PIN_AUDIO_IN 14     // software DTMF and maybe live audio digitization
 
 // Internal DAC pins; just defining so I remember these are used by the audio libraries
-#define PIN_AUDIO_OUT_L 25  // internal DAC pin
-#define PIN_AUDIO_OUT_R 26  // internal DAC pin
+#define PIN_AUDIO_OUT_L 25  // left  output channel pin for internal DAC
+#define PIN_AUDIO_OUT_R 26  // right output channel pin for internal DAC
 
 // SLIC module
 #define PIN_SHK 13          // SLIC SHK, off-hook
