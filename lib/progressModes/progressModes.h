@@ -72,4 +72,5 @@ void ringCountCallback(int);
 void dialingStartedCallback(bool isTone);
 void digitReceivedCallback(char);
 void configureByNumber(String starcode);
+void callFailed();
 #endif

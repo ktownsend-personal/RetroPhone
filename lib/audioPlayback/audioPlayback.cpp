@@ -1,13 +1,13 @@
 #include "Arduino.h"
 #include "audioPlayback.h"
+#include "audioSlices.h"
 #include "regionConfig.h"
-#include "Oscil.h"                // oscillator template class (copied from Mozzi)
-// #include "tables/sin2048_int8.h"  // sine table for oscillator (from Mozzi)
-#include "sin2048_int8.h"         // sine table for oscillator (copied from Mozzi)
 #include "SPIFFS.h"
+#include "DACOutput.h"
+#include "Oscil.h"                // oscillator template class (copied from Mozzi)
+#include "sin2048_int8.h"         // sine table for oscillator (copied from Mozzi)
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "DACOutput.h"
 
 // must define these before including minimp3.h
 #define MINIMP3_IMPLEMENTATION
@@ -37,7 +37,7 @@ const int BUFFER_SIZE = 1024;
 byte core;
 TaskHandle_t x_handle = NULL;
 Output *output = new DACOutput();                               // this uses I2S to write to onboard DAC; we could use external DAC if we use I2SOutput.h
-RegionConfig mozziRegion(region_northAmerica);                  // regional tone defs; default to North America until told otherwise
+RegionConfig currentRegion(region_northAmerica);                // regional tone defs; default to North America until told otherwise
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> t1(SIN2048_DATA);
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> t2(SIN2048_DATA);
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> t3(SIN2048_DATA);
@@ -55,23 +55,22 @@ unsigned long currentPlaybackRate;
 // plays tones of up to 4 frequencies, DTMF tones and MP3 files in flash file system
 audioPlayback::audioPlayback(RegionConfig region, byte targetCore)
 {
-  mozziRegion = region;
+  currentRegion = region;
   core = targetCore;
   pq = new playbackQueue();
-  output->start(AUDIO_RATE); // start with Mozzi's AUDIO_RATE macro, but it can change when playing MP3's
+  output->start(AUDIO_RATE); // start with rate we use for tones, but it can change when playing MP3's
 }
 
 // cleanup I2S
 audioPlayback::~audioPlayback(){
   if(!output) return;
-  output->stop();
   output->~Output();
   output = NULL;
 }
 
 // change the active region for generated sounds
 void audioPlayback::changeRegion(RegionConfig region){
-  mozziRegion = region;
+  currentRegion = region;
 }
 
 // starts playback of the queue for the given number of iterations (0 = infinite)
@@ -85,20 +84,20 @@ void audioPlayback::play(byte iterations, unsigned gapMS){
   queue.arraySize = pq->arraySize;
   queue.stopping = false;
   queue.lastSample = 0;
+  Serial.printf("\n\tsequence{len:%d,times:%d}", queue.arraySize, queue.iterations);
   for(int i = 0; i < pq->arraySize; i++){
-    queue.defs[i] = pq->defs[i];
-    // Serial.printf(
-    //   "\ndefs[%d]{%d,%d,%d,%d,%d,\"%s\",%d,%d}", 
-    //   i, 
-    //   queue.defs[i].duration,
-    //   queue.defs[i].freq1,
-    //   queue.defs[i].freq2,
-    //   queue.defs[i].freq3,
-    //   queue.defs[i].freq4,
-    //   queue.defs[i].filepath.c_str(),
-    //   queue.defs[i].offsetBytes,
-    //   queue.defs[i].samplesToPlay
-    // );
+    auto def = pq->defs[i];
+    queue.defs[i] = def;
+    Serial.printf("\n\tdefs[%d]: ", i);
+    if(def.repeatTimes != 1) {
+      auto times = def.repeatTimes == 0 ? String("forever") : String(def.repeatTimes) + String(" times");
+      Serial.printf("repeat{idx:%d,%s}", def.repeatIndex, times.c_str());
+    } else if (def.filepath != "") {
+      Serial.printf("mp3{%s,offset:%d,samples:%d}", def.filepath.c_str(), def.offsetBytes, def.samplesToPlay);
+    } else if (def.filepath == "") {
+      auto duration = def.duration == 0 ? String("forever") : String(def.duration) + String("ms");
+      Serial.printf("tone{%s,%dHz,%dHz,%dHz,%dHz}", duration.c_str(), def.freq1, def.freq2, def.freq3, def.freq4);
+    }
   }
 
   pq->arraySize = 0; // reset source queue for next sequence config
@@ -127,13 +126,13 @@ void audioPlayback::queueGap(unsigned spaceTime){
 
 // add multifreq tone
 void audioPlayback::queueTone(unsigned toneTime, unsigned short freq1, unsigned short freq2, unsigned short freq3, unsigned short freq4){
-  auto def = playbackDef{toneTime, freq1, freq2, freq3, freq4, "", 0, 0};
+  auto def = playbackDef{toneTime, freq1, freq2, freq3, freq4, "", 0, 0, 0, 1};
   queuePlaybackDef(def);
 }
 
 // add mp3
 void audioPlayback::queueMP3(String filepath, unsigned long offsetBytes, unsigned long samplesToPlay){
-  auto def = playbackDef{0, 0, 0, 0, 0, filepath, offsetBytes, samplesToPlay};
+  auto def = playbackDef{0, 0, 0, 0, 0, filepath, offsetBytes, samplesToPlay, 0, 1};
   queuePlaybackDef(def);
 }
 
@@ -186,24 +185,26 @@ void audioPlayback::queueDTMF(char digit, unsigned toneTime){
 }
 
 // add appropriate segments for the specified tone type and time
-void audioPlayback::queueTone(tones tone){
+void audioPlayback::queueTone(tones tone, byte iterations){
   switch(tone){
-    case dialtone:  return queueToneConfig(mozziRegion.dialtone);
-    case ringback:  return queueToneConfig(mozziRegion.ringback);
-    case busytone:  return queueToneConfig(mozziRegion.busytone);
-    case reorder:   return queueToneConfig(mozziRegion.reorder);
-    case howler:    return queueToneConfig(mozziRegion.howler);
-    case zip:       return queueToneConfig(mozziRegion.zip);
-    case err:       return queueToneConfig(mozziRegion.err);
+    case dialtone:  return queueToneConfig(currentRegion.dialtone, iterations);
+    case ringback:  return queueToneConfig(currentRegion.ringback, iterations);
+    case busytone:  return queueToneConfig(currentRegion.busytone, iterations);
+    case reorder:   return queueToneConfig(currentRegion.reorder,  iterations);
+    case howler:    return queueToneConfig(currentRegion.howler,   iterations);
+    case zip:       return queueToneConfig(currentRegion.zip,      iterations);
+    case err:       return queueToneConfig(currentRegion.err,      iterations);
   }
 }
 
 // convert ToneConfig to segments
-void audioPlayback::queueToneConfig(ToneConfig tc) {
+void audioPlayback::queueToneConfig(ToneConfig tc, byte iterations) {
 
   // NOTE: first index of tc.cadence[] and tc.freqs[] is the count of elements following
   // NOTE: when cadence count is zero then freqs are played forever (no cadence)
   // NOTE: any cadence with duration zero is played forever
+
+  auto repeatIndex = pq->arraySize;           // if we have 0 or > 1 iterations we need to add a repeat segment after adding the tone segments
 
   auto cadenceCount = tc.cadence[0];
   for(int x = 0; x <= cadenceCount; x++){
@@ -222,12 +223,42 @@ void audioPlayback::queueToneConfig(ToneConfig tc) {
     );
     if(cadenceCount == 0) return;             // done adding segments if no cadence
   }
+
+  if(iterations != 1) {
+    auto def = playbackDef{0, 0, 0, 0, 0, "", 0, 0, repeatIndex, iterations};
+    queuePlaybackDef(def);
+  }
+}
+
+void audioPlayback::queueSlice(sliceConfig slice){
+  queueMP3(slice.filename, slice.byteOffset, slice.samplesToPlay);
+}
+
+void audioPlayback::queueNumber(String digits, unsigned spaceTime){
+
+  sliceConfigs slices;
+  
+  for(auto digit : digits){
+    switch(digit){
+      case '0': queueSlice(slices.zero);   break;
+      case '1': queueSlice(slices.one);    break;
+      case '2': queueSlice(slices.two);    break;
+      case '3': queueSlice(slices.three);  break;
+      case '4': queueSlice(slices.four);   break;
+      case '5': queueSlice(slices.five);   break;
+      case '6': queueSlice(slices.six);    break;
+      case '7': queueSlice(slices.seven);  break;
+      case '8': queueSlice(slices.eight);  break;
+      case '9': queueSlice(slices.nine);   break;
+    }
+    if(spaceTime > 0) queueGap(spaceTime);
+  }
 }
 
 // plays the tone type as a task
 void audioPlayback::playTone(tones tone, byte iterations){
-  queueTone(tone);
-  play(iterations);
+  queueTone(tone, iterations);
+  play();
 }
 
 // plays the DTMF digits as a task
@@ -243,15 +274,21 @@ void audioPlayback::playMP3(String filepath, byte iterations, unsigned gapMS, un
 }
 
 void playback_task(void *arg){
+  Serial.print("\n\tstarted playback");
   auto queue = (playbackQueue*)arg;
   do {                                                          // loop iterations
     for(byte idx = 0; idx < queue->arraySize; idx++){           // loop the queue
       auto def = queue->defs[idx];
+      if(def.repeatTimes != 1 && !queue->stopping) {            // check repeater
+        idx = def.repeatIndex - 1;                              // go back to starting def of repeat sequence
+        continue;
+      }
       if(def.filepath == "") playback_tone(queue, def);         // play the tone segment
       if(def.filepath != "") playback_mp3(queue, def);          // play the mp3 segment
     }
   } while(queue->iterations-- != 1 && !queue->stopping);        // stop on last iteration (if iterations started at 0 then loop until notified to stop)
   antipop(0, 0, 1024*4);                                        // stuff buffer with silence so I2S doesn't repeat remnants
+  Serial.print("\n\tended playback");
   if(x_handle == xTaskGetCurrentTaskHandle()) x_handle = NULL;  // clear our own task handle if not already cleared or replaced
   vTaskDelete(NULL);                                            // self-delete the task when done
 }
@@ -300,6 +337,8 @@ void playback_mp3(playbackQueue *pq, playbackDef mp3){
     return;
   }
 
+  fseek(fp, mp3.offsetBytes, SEEK_SET);             // jump ahead if appropriate
+
   static mp3dec_t mp3d;                             // this gets populated by mp3 decoder on each read
   mp3dec_frame_info_t info;                         // this gets populated by mp3 decoder on each read
   unsigned char buf[BUFFER_SIZE];
@@ -324,15 +363,11 @@ void playback_mp3(playbackQueue *pq, playbackDef mp3){
     if(samples){
       if (!is_output_started) {                     // start output stream when we start getting samples from decoder
         is_output_started = true;
+        if(mp3.samplesToPlay > 0) samples_cutoff = mp3.samplesToPlay; // put a cap on how many samples to play
         //NOTE: be careful setting this when there is still audio in the buffer; even if rate is the same you will get a skip in the audio
         if(currentPlaybackRate != info.hz) {
           output->set_frequency(info.hz);
           currentPlaybackRate = info.hz;
-        }
-        if(mp3.offsetBytes > 0) {                   // jump ahead if appropriate
-          if(mp3.samplesToPlay > 0) samples_cutoff = mp3.samplesToPlay; // put a cap on how many samples to play
-          int result = fseek(fp, mp3.offsetBytes, SEEK_SET); // seek to offset position for playing a segment
-          continue;
         }
       }
       if(samples_cutoff > 0 && (samples_played + samples) > samples_cutoff) {
@@ -354,6 +389,7 @@ void playback_mp3(playbackQueue *pq, playbackDef mp3){
 } while(info.frame_bytes && !pq->stopping && !lastIteration);
 
   //cleanup
+  if(mp3.samplesToPlay > 0) antipop(0, 0, 1024*4);  // this resolves stuttering on slices by giving time for overhead of seeking to next slice
   if(fp) fclose(fp);
   fp = NULL;
   spiffs.~SPIFFS();

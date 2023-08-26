@@ -3,6 +3,7 @@
 #include "ringHandler.h"
 #include "hookHandler.h"
 #include "audioPlayback.h"
+#include "audioSlices.h"
 #include "dtmfHandler.h"
 #include "dtmfModule.h"
 #include "Preferences.h"
@@ -249,7 +250,7 @@ void modeStart(modes newmode) {
     case call_tone_dialing:   return timeoutStart();
     case call_ringing:        return player.playTone(player.ringback);
     case call_busy:           return player.playTone(player.busytone);
-    case call_fail:           return player.playTone(player.reorder);
+    case call_fail:           return callFailed();
     case system_config:       return configureByNumber(digits);
     case call_operator:       return; //TODO: handle operator simulation
     case call_abandoned:      return;
@@ -428,50 +429,54 @@ void configureByNumber(String starcode){
 
     case '5': {
       //NOTE: managing the success tone and mode switch directly so we can get the timing right
+
       byte option = (starcode[2]-'0') * 10 + (starcode[3]-'0');
-      auto slice = [option](unsigned offset, unsigned samples, String label)-> void {
-        Serial.printf("testing MP3 slice [%s]...", label.c_str());
-        player.playMP3("/fs/anna-1DSS-default-vocab.mp3", 1, 0, offset, samples);
-        if (wait(samples/44.1 + 500)) return; // attempting to delay exactly the right amount of time before switching mode, but abort if user hangs up
+      sliceConfigs slices;
+
+      auto sliceit = [](sliceConfig slice)-> void {
+        Serial.printf("testing MP3 slice [%s]...", slice.label.c_str());
+        player.queueSlice(slice);
+        player.play();
+        if (wait(slice.samplesToPlay/44.1 + 500)) return; // attempting to delay exactly the right amount of time before switching mode, but abort if user hangs up
         player.playTone(player.zip, 1);
         modeDefer(call_ready, 1000);
       };
+
       switch(option){
-        case 0:  return slice(4670,   23770, "0");
-        case 1:  return slice(8944,   18787, "1");
-        case 2:  return slice(12520,  18566, "2");
-        case 3:  return slice(16088,  19580, "3");
-        case 4:  return slice(19768,  17684, "4");
-        case 5:  return slice(23015,  27651, "5");
-        case 6:  return slice(28291,  23682, "6");
-        case 7:  return slice(32749,  18610, "7");
-        case 8:  return slice(36172,  18213, "8");
-        case 9:  return slice(39468,  25049, "9");
-        case 10: return slice(44038,  23814, "0 (alternate)");
-        case 11: return slice(48391,  32810, "please note");
-        case 12: return slice(54373,  48334, "this is a recording");
-        case 13: return slice(63104,  52082, "has been changed");
-        case 14: return slice(72565,  68002, "the number you have dialed");
-        case 15: return slice(84929,  57065, "is not in service");
-        case 16: return slice(95336,  98343, "please check the number and dial again");
-        case 17: return slice(113184, 48334, "the number dialed");
-        case 18: return slice(121971, 57771, "the new number is");
-        case 19: return slice(132475, 31840, "enter function");
-        case 20: return slice(138263, 29547, "please enter");
-        case 21: return slice(143635, 33913, "area code");
-        case 22: return slice(149801, 27783, "new number");
-        case 23: return slice(154852, 27563, "invalid");
-        case 24: return slice(159864, 32414, "not available");
-        case 25: return slice(165757, 57418, "enter service code");
-        case 26: return slice(176196, 21344, "deleted");
-        case 27: return slice(180077, 28489, "category");
-        case 28: return slice(185256, 17993, "date");
-        case 29: return slice(188527, 25754, "re-enter");
-        case 30: return slice(193210, 20551, "thank you");
-        case 31: return slice(196946, 75499, "or dial directory assistance");
+        case 0:  return sliceit(slices.zero);
+        case 1:  return sliceit(slices.one);
+        case 2:  return sliceit(slices.two);
+        case 3:  return sliceit(slices.three);
+        case 4:  return sliceit(slices.four);
+        case 5:  return sliceit(slices.five);
+        case 6:  return sliceit(slices.six);
+        case 7:  return sliceit(slices.seven);
+        case 8:  return sliceit(slices.eight);
+        case 9:  return sliceit(slices.nine);
+        case 10: return sliceit(slices.zero_alt);
+        case 11: return sliceit(slices.please_note);
+        case 12: return sliceit(slices.this_is_a_recording);
+        case 13: return sliceit(slices.has_been_changed);
+        case 14: return sliceit(slices.the_number_you_have_dialed);
+        case 15: return sliceit(slices.is_not_in_service);
+        case 16: return sliceit(slices.please_check_the_number_and_dial_again);
+        case 17: return sliceit(slices.the_number_dialed);
+        case 18: return sliceit(slices.the_new_number_is);
+        case 19: return sliceit(slices.enter_function);
+        case 20: return sliceit(slices.please_enter);
+        case 21: return sliceit(slices.area_code);
+        case 22: return sliceit(slices.new_number);
+        case 23: return sliceit(slices.invalid);
+        case 24: return sliceit(slices.not_available);
+        case 25: return sliceit(slices.enter_service_code);
+        case 26: return sliceit(slices.deleted);
+        case 27: return sliceit(slices.category);
+        case 28: return sliceit(slices.date);
+        case 29: return sliceit(slices.re_enter);
+        case 30: return sliceit(slices.thank_you);
+        case 31: return sliceit(slices.or_dial_directory_assistance);
       }
     }
-
   }
 
   if(!skipack) {
@@ -484,4 +489,16 @@ void configureByNumber(String starcode){
   }
 
   modeDefer(call_ready, 1000);
+}
+
+void callFailed(){
+  sliceConfigs slices;
+  player.queueSlice(slices.the_number_you_have_dialed);
+  player.queueNumber(digits);
+  player.queueSlice(slices.is_not_in_service);
+  player.queueSlice(slices.please_check_the_number_and_dial_again);
+  player.queueSlice(slices.this_is_a_recording);
+  player.queueGap(2000);
+  player.queueTone(player.reorder);
+  player.play();
 }
