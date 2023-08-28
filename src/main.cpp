@@ -1,7 +1,7 @@
 #include "Arduino.h"
 #include "progressModes.h"
 #include "ringHandler.h"
-#include "hookHandler.h"
+#include "pulseHandler.h"
 #include "audioPlayback.h"
 #include "audioSlices.h"
 #include "dtmfHandler.h"
@@ -36,7 +36,7 @@ bool softwareDTMF = false;  // software DTMF decoding is finicky, so I want to s
 String digits; // this is where we accumulate dialed digits
 auto prefs   = Preferences();
 auto ringer  = ringHandler(PIN_RM, PIN_FR, CH_FR);
-auto hooker  = hookHandler(PIN_SHK, dialingStartedCallback);
+auto pulser  = pulseHandler(PIN_SHK, dialingStartedCallback);
 auto dtmfer  = dtmfHandler(PIN_AUDIO_IN, dialingStartedCallback);
 auto dtmfmod = dtmfModule(PIN_Q1, PIN_Q2, PIN_Q3, PIN_Q4, PIN_STQ, dialingStartedCallback);
 auto region  = RegionConfig(region_northAmerica);
@@ -56,7 +56,7 @@ void setup() {
   if(!softwareDTMF) existsDTMF_module();
 
   ringer.setCounterCallback(ringCountCallback);
-  hooker.setDigitCallback(digitReceivedCallback);
+  pulser.setDigitCallback(digitReceivedCallback);
   dtmfer.setDigitCallback(digitReceivedCallback);
   dtmfmod.setDigitCallback(digitReceivedCallback);
 
@@ -131,7 +131,7 @@ bool testDTMF_module(int toneTime, int spaceTime, bool showSend, bool ignoreSHK)
   };
   bool pass = (unread + misread == 0);
   if(showSend && !pass) Serial.println();
-  if(!showSend || !pass) Serial.printf("                     %s", result.c_str());
+  if(!showSend || !pass) Serial.printf("\t%s", result.c_str());
   Serial.printf(" --> %sED: ", pass ? "PASS" : "FAIL");
   if(unread > 0) Serial.printf("%d unread, ", unread);
   if(misread > 0) Serial.printf("%d misread, ", misread);
@@ -226,7 +226,7 @@ void modeStart(modes newmode) {
     case call_ready:
       digits = "";
       timeoutStart();
-      hooker.start();
+      pulser.start();
       player.playTone(player.dialtone);
       return (softwareDTMF) ? dtmfer.start() : dtmfmod.start();
     case call_connecting:
@@ -264,11 +264,11 @@ void modeRun(modes mode){
     case call_incoming: 
       return ringer.run();
     case call_ready:
-      hooker.run();
+      pulser.run();
       timeoutCheck();
       return (softwareDTMF) ? dtmfer.run() : dtmfmod.run();
     case call_pulse_dialing:
-      hooker.run();
+      pulser.run();
       return timeoutCheck();
     case call_tone_dialing:
       timeoutCheck();
