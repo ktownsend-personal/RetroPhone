@@ -309,10 +309,10 @@ void playback_task(void *arg){
 
 void playback_tone(playbackQueue *pq, playbackDef tone){
 
-  auto gap = tone.freq1 + tone.freq2 + tone.freq3 + tone.freq4 == 0;
+  auto gap = (0 == tone.freq1 + tone.freq2 + tone.freq3 + tone.freq4);
 
   if(!gap){
-    // starting at phase 0 makes the tones and gaps predictable and ensures gaps are at mid-level instead of wherever the last tone left off
+    // starting at phase 0 makes the tones predictable and avoids sharp transition at start
     t1.setFreq(tone.freq1); t1.setPhase(0);
     t2.setFreq(tone.freq2); t2.setPhase(0);
     t3.setFreq(tone.freq3); t3.setPhase(0);
@@ -331,16 +331,13 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
   while(samples > 0 && !pq->stopping) {                       // generate the samples in chunks
     auto toGenerate = (samples > CHUNK) ? CHUNK : samples;    // determine chunk size
     if(tone.duration != 0) samples -= toGenerate;             // only decrement chunk size if not an infinite segment
-    short pcm[toGenerate*2];                                  // this holds the samples we want to give to I2S
-    if(gap){
-      memset(pcm, 0, 2 * toGenerate * sizeof(short));
-      // std::fill(pcm, pcm+MINIMP3_MAX_SAMPLES_PER_FRAME*2, 0);
-    } else {
-      for(int x = 0; x < toGenerate; x++){                      // fill frame buffer with samples
-        auto sum = t1.next()+t2.next()+t3.next()+t4.next();     // sum the next sample from all oscillators together
-        auto sample = (sum >> 3) << 8;                          // bitshift 3 to reduce amplitude (because we summed 4 oscillators), then bitshift 8 to upper 8 bits (onboard DAC only reads upper 8 bits)
-        pcm[x*2]   = sample;                                    // left channel at even index
-        pcm[x*2+1] = sample;                                    // right channel at odd index
+    short pcm[toGenerate*2] = {0};                            // this holds the samples we want to give to I2S; all elements initialized to 0
+    if(!gap){
+      for(int x = 0; x < toGenerate; x++){                    // fill frame buffer with samples
+        auto sum = t1.next()+t2.next()+t3.next()+t4.next();   // sum the next sample from all oscillators together
+        auto sample = (sum >> 3) << 8;                        // bitshift 3 to reduce amplitude (because we summed 4 oscillators), then bitshift 8 to upper 8 bits (onboard DAC only reads upper 8 bits)
+        pcm[x*2]   = sample;                                  // left channel at even index
+        pcm[x*2+1] = sample;                                  // right channel at odd index
       }
     }
     output->write(pcm, toGenerate);                           // write the tone samples to the output
