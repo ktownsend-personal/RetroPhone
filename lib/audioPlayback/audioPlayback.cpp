@@ -33,6 +33,8 @@
 //        maybe an anonymous callback function provided when starting playback so we can do specific things as needed, but threadsafe? Maybe just a flag the loop can watch?
 //        maybe enhance wait(ms) in main.cpp to be more of a defer(ms, callback) that blocks until mode change or audio completion (should mode change abort callback?)
 
+//TODO: check popping between tones on scope when doing DTMF speed test from star-menu
+
 const int BUFFER_SIZE = 1024;
 byte core;
 TaskHandle_t x_handle = NULL;
@@ -58,7 +60,7 @@ audioPlayback::audioPlayback(RegionConfig region, byte targetCore)
   currentRegion = region;
   core = targetCore;
   pq = new playbackQueue();
-  output->start(AUDIO_RATE); // start with rate we use for tones, but it can change when playing MP3's
+  // output->start(AUDIO_RATE); // start with rate we use for tones, but it can change when playing MP3's
 }
 
 // cleanup I2S
@@ -75,7 +77,12 @@ void audioPlayback::changeRegion(RegionConfig region){
 
 // starts playback of the queue for the given number of iterations (0 = infinite)
 void audioPlayback::play(byte iterations, unsigned gapMS){
-  stop(); // stop active playback, if any
+  stop();                           // stop active playback, if any
+  while(x_handle != NULL){          // wait for active task to stop (necessary due to both tasks trying to share static queue variable; new task simply ends if old task still active)
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+
+  bool showDebug = false;
   if(gapMS > 0) queueGap(gapMS);
 
   // clone the queue for the task to use because memory is fickle
@@ -84,19 +91,21 @@ void audioPlayback::play(byte iterations, unsigned gapMS){
   queue.arraySize = pq->arraySize;
   queue.stopping = false;
   queue.lastSample = 0;
-  Serial.printf("\n\tsequence{len:%d,times:%d}", queue.arraySize, queue.iterations);
+  if(showDebug) Serial.printf("\n\tsequence{len:%d,times:%d}", queue.arraySize, queue.iterations);
   for(int i = 0; i < pq->arraySize; i++){
     auto def = pq->defs[i];
     queue.defs[i] = def;
-    Serial.printf("\n\tdefs[%d]: ", i);
-    if(def.repeatTimes != 1) {
-      auto times = def.repeatTimes == 0 ? String("forever") : String(def.repeatTimes) + String(" times");
-      Serial.printf("repeat{idx:%d,%s}", def.repeatIndex, times.c_str());
-    } else if (def.filepath != "") {
-      Serial.printf("mp3{%s,offset:%d,samples:%d}", def.filepath.c_str(), def.offsetBytes, def.samplesToPlay);
-    } else if (def.filepath == "") {
-      auto duration = def.duration == 0 ? String("forever") : String(def.duration) + String("ms");
-      Serial.printf("tone{%s,%dHz,%dHz,%dHz,%dHz}", duration.c_str(), def.freq1, def.freq2, def.freq3, def.freq4);
+    if(showDebug) {
+      Serial.printf("\n\tdefs[%d]: ", i);
+      if(def.repeatTimes != 1) {
+        auto times = def.repeatTimes == 0 ? String("forever") : String(def.repeatTimes) + String(" times");
+        Serial.printf("repeat{idx:%d,%s}", def.repeatIndex, times.c_str());
+      } else if (def.filepath != "") {
+        Serial.printf("mp3{%s,offset:%d,samples:%d}", def.filepath.c_str(), def.offsetBytes, def.samplesToPlay);
+      } else if (def.filepath == "") {
+        auto duration = def.duration == 0 ? String("forever") : String(def.duration) + String("ms");
+        Serial.printf("tone{%s,%dHz,%dHz,%dHz,%dHz}", duration.c_str(), def.freq1, def.freq2, def.freq3, def.freq4);
+      }
     }
   }
 
@@ -109,8 +118,6 @@ void audioPlayback::play(byte iterations, unsigned gapMS){
 void audioPlayback::stop(){
   if(x_handle == NULL) return;
   xTaskNotifyGive(x_handle);  // tell the task to stop
-  x_handle = NULL;            // clear the handle
-  delay(100);                 // make caller wait to avoid a double-stop request missing the cleared handle and affecting a new task right out of the gate
 }
 
 // add playback def to the queue
@@ -274,8 +281,15 @@ void audioPlayback::playMP3(String filepath, byte iterations, unsigned gapMS, un
 }
 
 void playback_task(void *arg){
-  Serial.print("\n\tstarted playback");
   auto queue = (playbackQueue*)arg;
+  
+  if(currentPlaybackRate == 0){                                 // initialize output at first playback
+    currentPlaybackRate = AUDIO_RATE;
+    output->start(AUDIO_RATE);                                  // start with rate we use for tones, but it can change when playing MP3's
+    antipop(-128, 0, 500);                                      // trying to soften the I2S/DAC startup pop
+    antipop(0, 0, 1024*4);                                      // stuff buffer with silence so it stays at level 0 instead of 0v during I2S/DAC startup
+  }
+
   do {                                                          // loop iterations
     for(byte idx = 0; idx < queue->arraySize; idx++){           // loop the queue
       auto def = queue->defs[idx];
@@ -287,19 +301,23 @@ void playback_task(void *arg){
       if(def.filepath != "") playback_mp3(queue, def);          // play the mp3 segment
     }
   } while(queue->iterations-- != 1 && !queue->stopping);        // stop on last iteration (if iterations started at 0 then loop until notified to stop)
+
   antipop(0, 0, 1024*4);                                        // stuff buffer with silence so I2S doesn't repeat remnants
-  Serial.print("\n\tended playback");
   if(x_handle == xTaskGetCurrentTaskHandle()) x_handle = NULL;  // clear our own task handle if not already cleared or replaced
   vTaskDelete(NULL);                                            // self-delete the task when done
 }
 
 void playback_tone(playbackQueue *pq, playbackDef tone){
 
-  // starting at phase 0 makes the tones and gaps predictable and ensures gaps are at mid-level instead of wherever the last tone left off
-  t1.setFreq(tone.freq1); t1.setPhase(0);
-  t2.setFreq(tone.freq2); t2.setPhase(0);
-  t3.setFreq(tone.freq3); t3.setPhase(0);
-  t4.setFreq(tone.freq4); t4.setPhase(0);
+  auto gap = tone.freq1 + tone.freq2 + tone.freq3 + tone.freq4 == 0;
+
+  if(!gap){
+    // starting at phase 0 makes the tones and gaps predictable and ensures gaps are at mid-level instead of wherever the last tone left off
+    t1.setFreq(tone.freq1); t1.setPhase(0);
+    t2.setFreq(tone.freq2); t2.setPhase(0);
+    t3.setFreq(tone.freq3); t3.setPhase(0);
+    t4.setFreq(tone.freq4); t4.setPhase(0);
+  }
 
   //NOTE: be careful setting this when there is still audio in the buffer; even if rate is the same you will get a skip in the audio
   if(currentPlaybackRate != AUDIO_RATE) {
@@ -311,18 +329,23 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
   if(tone.duration > 0) samples = (unsigned long)AUDIO_RATE / (float)((float)1000/(float)tone.duration); // calculate number of samples to achieve duration
 
   while(samples > 0 && !pq->stopping) {                       // generate the samples in chunks
-    short pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];                 // this holds the samples we want to give to I2S
     auto toGenerate = (samples > CHUNK) ? CHUNK : samples;    // determine chunk size
     if(tone.duration != 0) samples -= toGenerate;             // only decrement chunk size if not an infinite segment
-    for(int x = 0; x < toGenerate; x++){                      // fill frame buffer with samples
-      auto sum = t1.next()+t2.next()+t3.next()+t4.next();     // sum the next sample from all oscillators together
-      auto sample = (sum >> 3) << 8;                          // bitshift 3 to reduce amplitude (because we summed 4 oscillators), then bitshift 8 to upper 8 bits (onboard DAC only reads upper 8 bits)
-      pcm[x*2]   = sample;                                    // left channel at even index
-      pcm[x*2+1] = sample;                                    // right channel at odd index
+    short pcm[toGenerate*2];                                  // this holds the samples we want to give to I2S
+    if(gap){
+      memset(pcm, 0, 2 * toGenerate * sizeof(short));
+      // std::fill(pcm, pcm+MINIMP3_MAX_SAMPLES_PER_FRAME*2, 0);
+    } else {
+      for(int x = 0; x < toGenerate; x++){                      // fill frame buffer with samples
+        auto sum = t1.next()+t2.next()+t3.next()+t4.next();     // sum the next sample from all oscillators together
+        auto sample = (sum >> 3) << 8;                          // bitshift 3 to reduce amplitude (because we summed 4 oscillators), then bitshift 8 to upper 8 bits (onboard DAC only reads upper 8 bits)
+        pcm[x*2]   = sample;                                    // left channel at even index
+        pcm[x*2+1] = sample;                                    // right channel at odd index
+      }
     }
     output->write(pcm, toGenerate);                           // write the tone samples to the output
     pq->lastSample = pcm[(toGenerate-1)*2];                   // track last sample to feed antipopFinish() when we finish
-    vTaskDelay(pdMS_TO_TICKS(10));                            // feed the watchdog
+    vTaskDelay(pdMS_TO_TICKS(1));                             // feed the watchdog
     pq->stopping |= ulTaskNotifyTake(pdTRUE, 0);              // check if told to stop
   };
 }
@@ -386,15 +409,16 @@ void playback_mp3(playbackQueue *pq, playbackDef mp3){
       pq->lastSample = pcm[(samples-1)*2];          // track last sample to feed antipopFinish() when we finish
     }
     vTaskDelay(pdMS_TO_TICKS(1));                   // feed the watchdog
-} while(info.frame_bytes && !pq->stopping && !lastIteration);
+  } while(info.frame_bytes && !pq->stopping && !lastIteration);
 
   //cleanup
-  if(mp3.samplesToPlay > 0) antipop(0, 0, 1024*4);  // this resolves stuttering on slices by giving time for overhead of seeking to next slice
+  if(mp3.samplesToPlay > 0) antipop(0, 0, 1024*4);  // filling buffer with silence resolves stuttering on slices by giving time for overhead of seeking to next slice
   if(fp) fclose(fp);
   fp = NULL;
   spiffs.~SPIFFS();
 }
 
+// use this to create a ramp to soften transitions, or stuff buffer with zeros when done feeding audio to ensure it idles silently
 void antipop(short start, short finish, short len){
   short ramp[len*2];
   float step = (start - finish)/(float)len;

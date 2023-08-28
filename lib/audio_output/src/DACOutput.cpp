@@ -25,8 +25,8 @@ void DACOutput::start(int sample_rate)
     i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
     // enable the DAC channels
     i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN);
-    // clear the DMA buffers
-    i2s_zero_dma_buffer(I2S_NUM_0);
-    // let it rip!
-    i2s_start(I2S_NUM_0);
+    // // clear the DMA buffers
+    // i2s_zero_dma_buffer(I2S_NUM_0);
+    // // let it rip!
+    // i2s_start(I2S_NUM_0);
 }

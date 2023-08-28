@@ -12,14 +12,14 @@ struct sliceConfig {
 
 struct sliceConfigs {
   sliceConfig zero =                                    sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 4670,   23770, "0"};
-  sliceConfig one =                                     sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 8944,   18787, "1"};
+  sliceConfig one =                                     sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 8944-500,   18787, "1"};
   sliceConfig two =                                     sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 12520,  18566, "2"};
   sliceConfig three =                                   sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 16088,  19580, "3"};
   sliceConfig four =                                    sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 19768,  17684, "4"};
   sliceConfig five =                                    sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 23015,  27651, "5"};
   sliceConfig six =                                     sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 28291,  23682, "6"};
   sliceConfig seven =                                   sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 32749-1000,  18610+1000, "7"};
-  sliceConfig eight =                                   sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 36172,  18213-2000, "8"};
+  sliceConfig eight =                                   sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 36172-1000,  18213-1000, "8"};
   sliceConfig nine =                                    sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 39468,  25049-500, "9"};
   sliceConfig zero_alt =                                sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 44038,  23814-2500, "0 (alternate)"};
   sliceConfig please_note =                             sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 48391,  32810-500, "please note"};
