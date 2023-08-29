@@ -33,8 +33,6 @@
 //        maybe an anonymous callback function provided when starting playback so we can do specific things as needed, but threadsafe? Maybe just a flag the loop can watch?
 //        maybe enhance wait(ms) in main.cpp to be more of a defer(ms, callback) that blocks until mode change or audio completion (should mode change abort callback?)
 
-//TODO: check popping between tones on scope when doing DTMF speed test from star-menu
-
 const int BUFFER_SIZE = 1024;
 byte core;
 TaskHandle_t x_handle = NULL;
@@ -331,7 +329,7 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
   while(samples > 0 && !pq->stopping) {                       // generate the samples in chunks
     auto toGenerate = (samples > CHUNK) ? CHUNK : samples;    // determine chunk size
     if(tone.duration != 0) samples -= toGenerate;             // only decrement chunk size if not an infinite segment
-    short pcm[toGenerate*2] = {0};                            // this holds the samples we want to give to I2S; all elements initialized to 0
+    short pcm[toGenerate*2] = {0};                            // this holds the samples we want to give to I2S; all elements initialized to 0 for gap scenario
     if(!gap){
       for(int x = 0; x < toGenerate; x++){                    // fill frame buffer with samples
         auto sum = t1.next()+t2.next()+t3.next()+t4.next();   // sum the next sample from all oscillators together
@@ -345,6 +343,7 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
     vTaskDelay(pdMS_TO_TICKS(1));                             // feed the watchdog
     pq->stopping |= ulTaskNotifyTake(pdTRUE, 0);              // check if told to stop
   };
+  //TODO: can we soften the tail of a tone back to zero? Antipop ramp caused audible artifact. Maybe try fading volume over the last samples loop after the buffer is filled?
 }
 
 void playback_mp3(playbackQueue *pq, playbackDef mp3){

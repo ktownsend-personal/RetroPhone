@@ -20,7 +20,7 @@ void pulseHandler::start(){
 void pulseHandler::run(){
   bool newSHK = digitalRead(PIN);
 
-  //debounce because SHK from SLIC is very noisy
+  // debounce because SHK from SLIC is very noisy
   if(newSHK != lastDebounceValue) {
     lastDebounceValue = newSHK;
     lastDebounceTime = millis();
@@ -33,26 +33,27 @@ void pulseHandler::run(){
   if(!newSHK && !SHK) return;                     // SHK low and unchanged, skip always
   SHK = newSHK;
 
-  // detect low transition
+  // falling edge
   if(!SHK && !pulsing) {
     pulsing = true;
     edge = millis();
-    if(!dialing){
+    return;
+  }
+
+  // rising edge
+  if(SHK && pulsing){
+    pulsing = false;
+    pulses++;
+    edge = millis();
+    if(!dialing){ 
+      // NOTE: callback on rising edge because falling edge occurs when user hangs up and causes a brief "pulse dialing" mode change
       dialing = true;
       dialingStartedCallback(false);
     }
     return;
   }
 
-  // detect high transition
-  if(SHK && pulsing){
-    pulsing = false;
-    pulses++;
-    edge = millis();
-    return;
-  }
-
-  // detect gap between digits
+  // gap between digits
   if(SHK && !pulsing && gap > pulseGapMax){
     char digit = String(pulses % 10)[0];
     pulsing = false;
