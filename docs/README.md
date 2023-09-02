@@ -18,5 +18,3 @@ Currently not organized, but you may find something useful in this folder.
 ## Prototype schematic v0.1 
 (click image for PDF or look in folder)
 [![Prototype schematic v0.1](RetroPhone%20schematic%20v0.1.PNG)](RetroPhone%20schematic%20v0.1.pdf)
-
-[SVG](RetroPhone.svg)
