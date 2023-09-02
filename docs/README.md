@@ -14,3 +14,7 @@ Currently not organized, but you may find something useful in this folder.
   <a href="modules and chips.jpg"><img src="modules and chips.jpg" width="49%" /></a>
   <a href="prototype on breadboard.jpg"><img src="prototype on breadboard.jpg" width="49%" /></a>
 </p>
+
+<embed src="RetroPhone%20schematic%20v0.1.pdf">
+  <a href="RetroPhone%20schematic%20v0.1.pdf">Prototype schematic v0.1.pdf</a>
+</embed>
