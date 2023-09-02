@@ -69,6 +69,7 @@ void modeGo(modes);
 void timeoutStart();
 void timeoutCheck();
 void ringCountCallback(int);
+void maybeDialingStartedCallback();
 void dialingStartedCallback(bool isTone);
 void digitReceivedCallback(char);
 void configureByNumber(String starcode);

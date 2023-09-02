@@ -56,6 +56,7 @@ void setup() {
   if(!softwareDTMF) existsDTMF_module();
 
   ringer.setCounterCallback(ringCountCallback);
+  pulser.setMaybeCallback(maybeDialingStartedCallback);
   pulser.setDigitCallback(digitReceivedCallback);
   dtmfer.setDigitCallback(digitReceivedCallback);
   dtmfmod.setDigitCallback(digitReceivedCallback);
@@ -300,6 +301,10 @@ void timeoutCheck(){
 // callback from ringer class so we can show ring counts in the serial output
 void ringCountCallback(int rings){
   Serial.printf("%d.", rings);
+}
+
+void maybeDialingStartedCallback(){
+  player.stop(); // kill dialtone as fast as possible to avoid hearing it when dialing a 1 first with pulse dialing
 }
 
 // callback from both tone and DTMF dailing handlers to signal us when dialing has started so we can reset dialed digits and switch off dialtone

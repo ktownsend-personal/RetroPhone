@@ -9,7 +9,12 @@ void pulseHandler::setDigitCallback(void (*callback)(char)) {
   digitReceivedCallback = callback;
 }
 
+void pulseHandler::setMaybeCallback(void (*callback)()){
+  maybeDialingStartedCallback = callback;
+}
+
 void pulseHandler::start(){
+  maybe = false;
   dialing = false;
   pulsing = false;
   pulses = 0;
@@ -22,6 +27,10 @@ void pulseHandler::run(){
 
   // debounce because SHK from SLIC is very noisy
   if(newSHK != lastDebounceValue) {
+    if(!newSHK && !maybe) {
+      maybeDialingStartedCallback();   // used for stopping dialtone faster
+      maybe = true;
+    }
     lastDebounceValue = newSHK;
     lastDebounceTime = millis();
     return;
