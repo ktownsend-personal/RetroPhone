@@ -15,6 +15,8 @@ Currently not organized, but you may find something useful in this folder.
   <a href="prototype on breadboard.jpg"><img src="prototype on breadboard.jpg" width="49%" /></a>
 </p>
 
-<embed src="RetroPhone%20schematic%20v0.1.pdf">
-  <a href="RetroPhone%20schematic%20v0.1.pdf">Prototype schematic v0.1.pdf</a>
-</embed>
+## Prototype schematic v0.1 
+(click image for PDF or look in folder)
+[![Prototype schematic v0.1](RetroPhone%20schematic%20v0.1.PNG)](RetroPhone%20schematic%20v0.1.pdf)
+
+[SVG](RetroPhone.svg)
