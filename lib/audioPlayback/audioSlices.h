@@ -45,4 +45,6 @@ struct sliceConfigs {
   sliceConfig or_dial_directory_assistance =            sliceConfig{"/fs/anna-1DSS-default-vocab.mp3", 196946-500, 75499, "or dial directory assistance"};
 };
 
+const sliceConfigs SLICES;
+
 #endif

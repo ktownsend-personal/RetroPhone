@@ -430,9 +430,6 @@ void configureByNumber(String starcode){
     case '5': {
       //NOTE: managing the success tone and mode switch directly so we can get the timing right
 
-      byte option = (starcode[2]-'0') * 10 + (starcode[3]-'0');
-      sliceConfigs slices;
-
       auto sliceit = [](sliceConfig slice)-> void {
         Serial.printf("testing MP3 slice [%s]...", slice.label.c_str());
         player.queueSlice(slice);
@@ -442,39 +439,41 @@ void configureByNumber(String starcode){
         modeDefer(call_ready, 1000);
       };
 
+      byte option = (starcode[2]-'0') * 10 + (starcode[3]-'0');
+
       switch(option){
-        case 0:  return sliceit(slices.zero);
-        case 1:  return sliceit(slices.one);
-        case 2:  return sliceit(slices.two);
-        case 3:  return sliceit(slices.three);
-        case 4:  return sliceit(slices.four);
-        case 5:  return sliceit(slices.five);
-        case 6:  return sliceit(slices.six);
-        case 7:  return sliceit(slices.seven);
-        case 8:  return sliceit(slices.eight);
-        case 9:  return sliceit(slices.nine);
-        case 10: return sliceit(slices.zero_alt);
-        case 11: return sliceit(slices.please_note);
-        case 12: return sliceit(slices.this_is_a_recording);
-        case 13: return sliceit(slices.has_been_changed);
-        case 14: return sliceit(slices.the_number_you_have_dialed);
-        case 15: return sliceit(slices.is_not_in_service);
-        case 16: return sliceit(slices.please_check_the_number_and_dial_again);
-        case 17: return sliceit(slices.the_number_dialed);
-        case 18: return sliceit(slices.the_new_number_is);
-        case 19: return sliceit(slices.enter_function);
-        case 20: return sliceit(slices.please_enter);
-        case 21: return sliceit(slices.area_code);
-        case 22: return sliceit(slices.new_number);
-        case 23: return sliceit(slices.invalid);
-        case 24: return sliceit(slices.not_available);
-        case 25: return sliceit(slices.enter_service_code);
-        case 26: return sliceit(slices.deleted);
-        case 27: return sliceit(slices.category);
-        case 28: return sliceit(slices.date);
-        case 29: return sliceit(slices.re_enter);
-        case 30: return sliceit(slices.thank_you);
-        case 31: return sliceit(slices.or_dial_directory_assistance);
+        case 0:  return sliceit(SLICES.zero);
+        case 1:  return sliceit(SLICES.one);
+        case 2:  return sliceit(SLICES.two);
+        case 3:  return sliceit(SLICES.three);
+        case 4:  return sliceit(SLICES.four);
+        case 5:  return sliceit(SLICES.five);
+        case 6:  return sliceit(SLICES.six);
+        case 7:  return sliceit(SLICES.seven);
+        case 8:  return sliceit(SLICES.eight);
+        case 9:  return sliceit(SLICES.nine);
+        case 10: return sliceit(SLICES.zero_alt);
+        case 11: return sliceit(SLICES.please_note);
+        case 12: return sliceit(SLICES.this_is_a_recording);
+        case 13: return sliceit(SLICES.has_been_changed);
+        case 14: return sliceit(SLICES.the_number_you_have_dialed);
+        case 15: return sliceit(SLICES.is_not_in_service);
+        case 16: return sliceit(SLICES.please_check_the_number_and_dial_again);
+        case 17: return sliceit(SLICES.the_number_dialed);
+        case 18: return sliceit(SLICES.the_new_number_is);
+        case 19: return sliceit(SLICES.enter_function);
+        case 20: return sliceit(SLICES.please_enter);
+        case 21: return sliceit(SLICES.area_code);
+        case 22: return sliceit(SLICES.new_number);
+        case 23: return sliceit(SLICES.invalid);
+        case 24: return sliceit(SLICES.not_available);
+        case 25: return sliceit(SLICES.enter_service_code);
+        case 26: return sliceit(SLICES.deleted);
+        case 27: return sliceit(SLICES.category);
+        case 28: return sliceit(SLICES.date);
+        case 29: return sliceit(SLICES.re_enter);
+        case 30: return sliceit(SLICES.thank_you);
+        case 31: return sliceit(SLICES.or_dial_directory_assistance);
       }
     }
   }
@@ -492,12 +491,12 @@ void configureByNumber(String starcode){
 }
 
 void callFailed(){
-  sliceConfigs slices;
-  player.queueSlice(slices.the_number_you_have_dialed);
+  player.queueGap(1000);
+  player.queueSlice(SLICES.the_number_you_have_dialed);
   player.queueNumber(digits);
-  player.queueSlice(slices.is_not_in_service);
-  player.queueSlice(slices.please_check_the_number_and_dial_again);
-  player.queueSlice(slices.this_is_a_recording);
+  player.queueSlice(SLICES.is_not_in_service);
+  player.queueSlice(SLICES.please_check_the_number_and_dial_again);
+  player.queueSlice(SLICES.this_is_a_recording);
   player.queueGap(2000);
   player.queueTone(player.reorder);
   player.play();

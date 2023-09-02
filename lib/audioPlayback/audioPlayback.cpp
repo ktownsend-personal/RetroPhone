@@ -240,21 +240,18 @@ void audioPlayback::queueSlice(sliceConfig slice){
 }
 
 void audioPlayback::queueNumber(String digits, unsigned spaceTime){
-
-  sliceConfigs slices;
-  
   for(auto digit : digits){
     switch(digit){
-      case '0': queueSlice(slices.zero);   break;
-      case '1': queueSlice(slices.one);    break;
-      case '2': queueSlice(slices.two);    break;
-      case '3': queueSlice(slices.three);  break;
-      case '4': queueSlice(slices.four);   break;
-      case '5': queueSlice(slices.five);   break;
-      case '6': queueSlice(slices.six);    break;
-      case '7': queueSlice(slices.seven);  break;
-      case '8': queueSlice(slices.eight);  break;
-      case '9': queueSlice(slices.nine);   break;
+      case '0': queueSlice(SLICES.zero);   break;
+      case '1': queueSlice(SLICES.one);    break;
+      case '2': queueSlice(SLICES.two);    break;
+      case '3': queueSlice(SLICES.three);  break;
+      case '4': queueSlice(SLICES.four);   break;
+      case '5': queueSlice(SLICES.five);   break;
+      case '6': queueSlice(SLICES.six);    break;
+      case '7': queueSlice(SLICES.seven);  break;
+      case '8': queueSlice(SLICES.eight);  break;
+      case '9': queueSlice(SLICES.nine);   break;
     }
     if(spaceTime > 0) queueGap(spaceTime);
   }
