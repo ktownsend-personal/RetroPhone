@@ -144,8 +144,7 @@ void audioPlayback::queueMP3(String filepath, unsigned long offsetBytes, unsigne
 // add DTMF digits
 void audioPlayback::queueDTMF(String digits, unsigned toneTime, unsigned spaceTime){
 
-  /*
-    TODO: saw this about dBm levels here: https://people.ece.ubc.ca/edc/4550.fall2017/lec2.pdf
+  /* TODO: saw this about dBm levels here: https://people.ece.ubc.ca/edc/4550.fall2017/lec2.pdf
     • DTMF high-frequency tones are sent at a level of -4 to -9 dBm and lower-frequency tones are sent at a level about 2 dB lower
     • dial tone is a continuous tone having frequencies of 350 and 440 Hz at a level of −13 dBm
     • ringback tone is defined as comprising frequencies of 440 and 480 Hz at a level of −19 dBm and a cadence of 2 seconds ON and 4 seconds OFF
