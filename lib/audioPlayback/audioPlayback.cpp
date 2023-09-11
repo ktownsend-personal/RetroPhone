@@ -16,7 +16,7 @@
 #include "minimp3.h"
 
 #define AUDIO_RATE 32768 // default rate for ESP32
-#define CHUNK 576 // for tone generation; 17.58ms of samples based on AUDIO_RATE of 32768; copied what mp3 decoder chunks at but there might be a better value (mp3 decoder uses 576 for 22050Hz or 1152 for 44100Hz, which is 22.122ms)
+#define CHUNK 33 // for tone generation; minimum 1ms for smooth audio; 33/32768Hz=1.0007ms; for comparison, mp3 decoder chunk sizes: 576/22050Hz=26.122ms, 1152/44100Hz=26.122ms
 
 //NOTE: I2S buffer overrun: 
 //      Adding to buffer times out and skips whatever didn't fit unless portMAX_DELAY given to i2s_write and then code blocks until all samples are written.
@@ -321,7 +321,7 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
   }
 
   unsigned long samples = CHUNK;
-  if(tone.duration > 0) samples = (unsigned long)AUDIO_RATE / (float)((float)1000/(float)tone.duration); // calculate number of samples to achieve duration
+  if(tone.duration > 0) samples = AUDIO_RATE * tone.duration * 0.001; // calculate number of samples to achieve duration
 
   while(samples > 0 && !pq->stopping) {                       // generate the samples in chunks
     auto toGenerate = (samples > CHUNK) ? CHUNK : samples;    // determine chunk size

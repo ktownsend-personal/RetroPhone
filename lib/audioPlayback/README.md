@@ -10,3 +10,10 @@ I really like the FreeRTOS task approach I found in the original example, which 
 
 ## TODO
 * notification mechanism back to main loop that a playback is finished to improve coordination of modes
+
+## NOTES
+* tone generation requires a minimum of 1ms per chunk for smooth audio, which is 33 chunks for audio rate of 32768Hz
+  * Hz * seconds = chunk size
+  * larger chunks may be needed if code processing timings change
+  * keeping this small resoves the issue I had with still hearing a blip of dialtone when dialing "1" as first digit
+* mp3 handler chunks at 26.122ms: 576@22050Hz, 1152@44100Hz

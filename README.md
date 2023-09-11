@@ -68,9 +68,12 @@ There is a lot of info in this README, but also some useful stuff like my schema
   * While trying a new strategy to generate call progress tones I found that PhoneDTMF doesn't murder the new dialtone. It doesn't hear the DTMF tone sometimes, but seems to get it most of the time. The new call progress tone techique uses I2S to the local DAC like Mozzi, but runs as a FreeRTOS task feeding a buffer with multiple samples at a time instead of a single sample during each main loop iteration. 
   * I wonder if PhoneDTMF could run as a task with FreeRTOS and have better results?
 * Using Preferences.h to save settings was hanging on the prefs.begin() call at startup. I couldn't find anyone else online having this issue, but I eventually figured out it was a timing issue of some sort. A short delay before calling prefs.begin() was needed. A 50ms delay seems sufficient. I occasionally saw hangs when reading values during startup(), so if you see that try increasing the delay. 
-* detecting when user hangs up vs. pulse dialing requires enough of a delay that dialing 1 as first digit finishes just before the dialtone stops if on a mechanical rotary dial phone
+* stopping dialtone fast enough to not hear a blip of it after dialing `1` as first digit required some special handling
+  * affects mechanical rotary dial phone; electronic pulse dial phone mutes line audio long enough that it wasn't an issue
+  * added special callback to stop dialtone on very first instant of SHK falling edge without waiting for debounce
+  * dialing-started callback must wait for rising edge to avoid dialing mode change on hangup
+  * reduced tone generation chunk size from 576 to 33 (17ms to 1ms) so audio task loop detects cancellation faster and less audio in the buffer to finish playing
   * I wonder if the original POTS system had that issue too?
-  * The best I could achieve was adding a callback at the very first instant of SHK falling edge without waiting for debounce, but you can still hear dialtone for just a tiny fraction of an instant after the 1 is dialed. I think that fraction is the I2S buffer playing what's left after stopping the audio. I don't think it's worth trying to eliminate that.
 * I2S with the internal DAC on the ESP32 has a quirk with popping when I2S first starts due to the pin level being 0V or floating at some non-midpoint value and suddenly jumping to the midpoint value (the zero-signal level). 
   * This is partly solvable by initializing the pin with a ramp signal before starting I2S, except for the case where the pin level is floating rather than 0V so we can't predict the starting level to ramp from and our ramp causes a popping sound. We might be able to solve that with a pulldown resistor on the pin, maybe 100K. I need to test this. 
   * This isn't much of a real problem since the user is unlikely to have the handset to their ear at startup. I only notice it when I have my external speaker hooked up while testing

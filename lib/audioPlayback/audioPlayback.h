@@ -17,7 +17,7 @@ struct playbackDef {
   unsigned long offsetBytes;
   unsigned long samplesToPlay;
   //--------repeat--------//
-  byte repeatIndex;
+  short repeatIndex;
   byte repeatTimes;
 };
 
