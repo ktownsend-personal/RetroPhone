@@ -1,4 +1,5 @@
 #include "Arduino.h"
+#include "main.h"
 #include "progressModes.h"
 #include "ringHandler.h"
 #include "pulseHandler.h"
