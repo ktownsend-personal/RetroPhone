@@ -209,9 +209,9 @@ modes modeDetect() {
 }
 
 void modeStop(modes oldmode) {
-  Serial.println(); // end the mode line
-  deferModeUntil = 0;
-  deferActionUntil = 0;
+  Serial.println();     // end the active mode line
+  deferModeUntil = 0;   // cancel scheduled mode change
+  deferActionUntil = 0; // cancel scheduled action
   switch(oldmode){
     case call_incoming: return ringer.stop();
     default:            return player.stop();
