@@ -1,6 +1,10 @@
 # RetroPhone - *The Code*
 
-This project uses the Arduino library, but instead of using the Arduino IDE I chose to use the PlatformIO extension with Visual Studio Code. I plan to add some instructions to convert this to an Arduino IDE project for anyone that prefers that environment. I use Visual Studio Code for my real job, so I find it more comfortable to use.
+This project uses the Arduino library, but instead of using the Arduino IDE I chose to use the PlatformIO extension with Visual Studio Code. I use Visual Studio Code for my real job, so I find it more comfortable to use.
+
+Follow [these instructions](<README-Convert to Arduino IDE.md>) to convert this project for Arduino IDE.
+
+## Where to start
 
 Start with main.cpp to get a feel for what this code is doing. The `setup()` and `loop()` functions are the entry points, just like any Arduino project.
 
