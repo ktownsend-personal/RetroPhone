@@ -6,7 +6,7 @@ Free for anyone to copy from. I live by the motto "inspire, not require" as much
 
 This is a hobby project to make a few old phones interactive for my retro room so that visitors can experience old-school landline phones without having to buy phone service.
 
-There is a lot of info in this README, but also some useful stuff in the [docs folder](docs/README.md) like my schematic and some reference materials. Many of the folders also have their own README file.
+There is a lot of info in this README, but also some useful stuff in the [docs folder](docs/README.md) like my schematic and some reference materials. Many of the folders also have their own README file. The [src/README.md](src/README.md) file is a good place to start for the code. 
 
 <p float="left">
   <a href="docs/modules and chips.jpg"><img src="docs/modules and chips.jpg" width="49%" /></a>
@@ -55,8 +55,6 @@ There is a lot of info in this README, but also some useful stuff in the [docs f
 * trunk line via wifi, or wired if wifi affects audio quality
   * could switch to PiZeroW or something if simultaneious ADC/DAC/Wifi is too much for ESP32
   * might be an option to design these modules for a backplane in a single housing and just use wiring between the modules for analog audio (think of it like a local switching office)
-* documentation
-  * describe the code
 
 ## Challenges
 * high voltage ring signal overlaps going off-hook slightly
@@ -69,7 +67,7 @@ There is a lot of info in this README, but also some useful stuff in the [docs f
   * I wonder if PhoneDTMF could run as a task with FreeRTOS and have better results?
 * Using Preferences.h to save settings was hanging on the prefs.begin() call at startup. I couldn't find anyone else online having this issue, but I eventually figured out it was a timing issue of some sort. A short delay before calling prefs.begin() was needed. A 50ms delay seems sufficient. I occasionally saw hangs when reading values during startup(), so if you see that try increasing the delay. 
 * stopping dialtone fast enough to not hear a blip of it after dialing `1` as first digit required some special handling
-  * affects mechanical rotary dial phone; electronic pulse dial phone mutes line audio long enough that it wasn't an issue
+  * primarily affects mechanical rotary dial phone; my electronic slimline phone mutes line audio long enough that it wasn't an issue
   * added special callback to stop dialtone on very first instant of SHK falling edge without waiting for debounce
   * dialing-started callback must wait for rising edge to avoid dialing mode change on hangup
   * reduced tone generation chunk size from 576 to 33 (17ms to 1ms) so audio task loop detects cancellation faster and less audio in the buffer to finish playing
@@ -96,7 +94,8 @@ There is a lot of info in this README, but also some useful stuff in the [docs f
 * could use an IO pin to control power to the hardware DTMF decoder and level shifter to reduce power consumption, but only if I want to run on a battery
 * PhoneDTMF software decoding might run better as a FreeRTOS task... needs experimentation
 
-## Tidbits
+## C++ Tidbits
+Although I'm a seasoned software engineer, I'm new to C++ so I've got some notes others may find helpful.
 * `for (const auto &line : lines){}` enumerate a local array (not pointer to array) [ref](https://luckyresistor.me/2019/07/12/write-less-code-using-the-auto-keyword/)
 * `Serial.printf("..%s..", stringvar.c_str())` to print `String` type with printf because `%s` epxects C style string not `String` object and will garble the value or even crash the app
 * passing arrays to functions, [good explanation](https://stackoverflow.com/a/19894884/8228356)
