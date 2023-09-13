@@ -13,8 +13,8 @@ class ringHandler {
     int ringCount = 0;
 
   private:
-    unsigned PIN_RM;
-    unsigned CH_FR;
+    unsigned RMpin;
+    unsigned FRch;
     unsigned RING_FREQ;
     int* ringCadence; // expects cadence array, first element count of timings in the array, then the timings
     int cadenceCount = 0;

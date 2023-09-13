@@ -1,8 +1,8 @@
 #include "ringHandler.h"
 
 ringHandler::ringHandler(unsigned pinRM, unsigned pinFR, unsigned channelFR) {
-  PIN_RM = pinRM;
-  CH_FR = channelFR;
+  RMpin = pinRM;
+  FRch = channelFR;
   pinMode(pinRM, OUTPUT);
   ledcSetup(channelFR, 20, 8); // this freq will get replaced by start(), so it's fairly arbitrary
   ledcAttachPin(pinFR, channelFR);
@@ -39,11 +39,11 @@ void ringHandler::stop(){
 }
 
 void ringHandler::on(){
-  digitalWrite(PIN_RM, HIGH);
-  ledcWriteTone(CH_FR, RING_FREQ);
+  digitalWrite(RMpin, HIGH);
+  ledcWriteTone(FRch, RING_FREQ);
 }
 
 void ringHandler::off(){
-  ledcWriteTone(CH_FR, 0);
-  digitalWrite(PIN_RM, LOW);
+  ledcWriteTone(FRch, 0);
+  digitalWrite(RMpin, LOW);
 }

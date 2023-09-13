@@ -1,5 +1,6 @@
 #include "Arduino.h"
 #include "main.h"
+#include "config.h"
 #include "progressModes.h"
 #include "ringHandler.h"
 #include "pulseHandler.h"
@@ -9,30 +10,6 @@
 #include "dtmfModule.h"
 #include "Preferences.h"
 #include "statusHandler.h"
-
-#define PIN_LED 2           // using onboard LED until I get my addressable RGB
-#define PIN_RGB 21          // addressable RGB for status
-#define PIN_BTN 12          // external button to initiate ringing
-#define PIN_AUDIO_IN 14     // software DTMF and maybe live audio digitization
-
-// Internal DAC pins; just defining so I remember these are used by the audio libraries
-#define PIN_AUDIO_OUT_L 25  // left  output channel pin for internal DAC
-#define PIN_AUDIO_OUT_R 26  // right output channel pin for internal DAC
-
-// SLIC module
-#define PIN_SHK 13          // SLIC SHK, off-hook
-#define PIN_RM 32           // SLIC RM, ring mode enable
-#define PIN_FR 33           // SLIC FR, ring toggle, use PWM 50%
-#define CH_FR 0             // SLIC FR, PWM channel
-
-// DTMF module
-#define PIN_Q1 36           // DTMF bit 1
-#define PIN_Q2 39           // DTMF bit 2
-#define PIN_Q3 34           // DTMF bit 3
-#define PIN_Q4 35           // DTMF bit 4
-#define PIN_STQ 27          // DTMF value ready to read
-
-bool softwareDTMF = false;  // software DTMF decoding is finicky, so I want to switch between hardware and software DTMF decoders easily
 
 String digits; // this is where we accumulate dialed digits
 auto prefs   = Preferences();
@@ -65,11 +42,11 @@ void setup() {
   modeStart(mode); // set initial mode
 }
 
-// this will wait the number of milliseconds specified, or until user hangs up
+// this will wait (blocking) the number of milliseconds specified, or until user hangs up
 // returns true if user hung up, otherwise false
 bool wait(unsigned int milliseconds){
   auto until = millis() + milliseconds;
-  while(millis() < until) if(!digitalRead(PIN_SHK)) return true;
+  while(millis() < until) if(!digitalRead(PIN_SHK)) return true; // we have to check SHK directly because this is a blocking wait and mode won't change
   return false;
 }
 
