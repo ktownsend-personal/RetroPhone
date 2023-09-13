@@ -1,12 +1,12 @@
 #ifndef main_config_h
 #define main_config_h
 
-#define PIN_LED      2      // using onboard LED until I get my addressable RGB
-#define PIN_RGB      21     // addressable RGB for status
+#define PIN_LED      2      // using onboard LED for basic off-hook status
+#define PIN_RGB      21     // addressable RGB for call progress mode status
 #define PIN_BTN      12     // external button to initiate ringing
-#define PIN_AUDIO_IN 14     // software DTMF and maybe live audio digitization
+#define PIN_AUDIO_IN 14     // software DTMF and future live audio digitization
 
-// Internal DAC pins; just defining so I remember these are used by the audio libraries
+// Internal DAC pins        // just defining so I remember these are used by the audio libraries
 #define PIN_AUDIO_OUT_L 25  // left  output channel pin for internal DAC
 #define PIN_AUDIO_OUT_R 26  // right output channel pin for internal DAC
 
@@ -24,5 +24,6 @@
 #define PIN_STQ 27          // DTMF value ready to read
 
 bool softwareDTMF = false;  // software DTMF decoding is finicky, so I want to switch between hardware and software DTMF decoders easily
+bool detectMT870  = true;   // detect presence of hardware decoder module and fallback on software decoding if not installed
 
 #endif

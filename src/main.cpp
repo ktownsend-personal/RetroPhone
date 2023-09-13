@@ -31,7 +31,7 @@ void setup() {
   pinMode(PIN_SHK, INPUT_PULLUP);
 
   settingsInit();
-  if(!softwareDTMF) existsDTMF_module();
+  if(!softwareDTMF && detectMT870) existsDTMF_module();
 
   ringer.setCounterCallback(ringCountCallback);
   pulser.setMaybeCallback(maybeDialingStartedCallback);
@@ -65,22 +65,21 @@ void deferActionCheckElapsed(){
 
 void existsDTMF_module(){
   // DTMF module present?
-  bool dtmfHardwareExists = testDTMF_module(40, 40, true, true);
+  bool dtmfHardwareExists = testDTMF_module("1248D", 50, 50, true, true); // playing just the tones that light each Q bit LED individually, and D to clear them
   if(!dtmfHardwareExists && !softwareDTMF) {
     softwareDTMF = true;
     Serial.println("Hardware DTMF module not detected. Auto-switching to software DTMF.");
   };
-  // delay a bit to allow DTMF "D" to finish so we don't detect as dialing it if user has phone off the hook
+  // delay a bit to allow DTMF to finish playing so we don't detect as dialing it if user has phone off the hook
   wait(50);
 }
 
 // test DTMF module response at given tone and space times
-bool testDTMF_module(int toneTime, int spaceTime, bool showSend, bool ignoreSHK){
+bool testDTMF_module(String digits, int toneTime, int spaceTime, bool showSend, bool ignoreSHK){
   // testing DTMF module by playing tones ourselves and checking pin responses
   // The module may give a read during the space or even overlap into the next digit, so we must 
   // detect reads independently of playing tones and run the loop extra iterations after finished.
   // My testing shows min toneTime 33 and min spaceTime 19, but min combo time between 54 and 66 depending on combination.
-  const String digits = "1234567890*#ABCD";
   String reads;
   bool checked = false;
   if(showSend) Serial.printf("\tTesting DTMF module: %s", digits.c_str());
@@ -380,12 +379,13 @@ void configureByNumber(String starcode){
 
     case '3': {       // DTMF module speed test; last digit is max iterations, or zero to go until nothing reads successfully
       skipack = true; // must skip normal ack so the D tone at end of the loop can clear the module's LED's
+      const String digits = "1234567890*#ABCD";
       int start = 39;
       byte num = starcode[2] - '0';
       int floor = (num == 0) ? 0 : (start - num);
       Serial.printf("testing DTMF module speed for maximum %d iterations...\n", start-floor);
       for(int duration = start; duration > floor; duration--)
-        if(!testDTMF_module(duration, duration)) break;
+        if(!testDTMF_module(digits, duration, duration)) break;
       break;
     }
 
