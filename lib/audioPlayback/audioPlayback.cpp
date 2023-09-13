@@ -2,7 +2,7 @@
 #include "audioPlayback.h"
 #include "audioSlices.h"
 #include "regionConfig.h"
-#include "SPIFFS.h"
+#include "spiffs.h"
 #include "DACOutput.h"
 #include "Oscil.h"                // oscillator template class (copied from Mozzi)
 #include "sin2048_int8.h"         // sine table for oscillator (copied from Mozzi)
@@ -254,6 +254,38 @@ void audioPlayback::queueNumber(String digits, unsigned spaceTime){
     }
     if(spaceTime > 0) queueGap(spaceTime);
   }
+}
+
+void audioPlayback::queueInfoTones(infotones first, infotones second, infotones third){
+
+  const int short_tone = 276;
+  const int long_tone = 380;
+  const int low_tone[] = {914, 1371, 1777};
+  const int high_tone[] = {985, 1428, 0};    // third tone is always low, but just in case someone tries to specify high tone we will use 0Hz
+
+  infotones tones[] = {first, second, third};
+  for(int x = 0; x < 3; x++){
+    switch(tones[x]){
+      case low_short:
+        queueTone(short_tone, low_tone[x], 0, 0, 0);
+        break;
+      case low_long:
+        queueTone(long_tone, low_tone[x], 0, 0, 0);
+        break;
+      case high_short:
+        queueTone(short_tone, high_tone[x], 0, 0, 0);
+        break;
+      case high_long:
+        queueTone(long_tone, high_tone[x], 0, 0, 0);
+        break;
+    }
+  }
+
+  // NOTE:  The spec allows 100ms max between tones and message, but recommends as close to 0ms as possible...however we
+  //        need 130ms minimum to avoid challenges with mp3 changing playback speed before buffer finishes playing tone.
+  // TODO:  Figure out a way to sync playback speed change with buffer completing previous audio so we can reduce the gap.
+  queueGap(130);
+
 }
 
 // plays the tone type as a task

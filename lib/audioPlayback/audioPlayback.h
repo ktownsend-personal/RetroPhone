@@ -47,6 +47,13 @@ class audioPlayback
       err
     };
 
+    enum infotones {
+      low_short,
+      low_long,
+      high_short,
+      high_long
+    };
+
     audioPlayback(RegionConfig region = region_northAmerica, byte targetCore = 0);
     ~audioPlayback();
 
@@ -59,6 +66,7 @@ class audioPlayback
     void queueDTMF(String digits, unsigned toneTime = 40, unsigned spaceTime = 40);
     void queueSlice(sliceConfig slice);
     void queueNumber(String digits, unsigned spaceTime = 0);
+    void queueInfoTones(infotones first, infotones second, infotones third);
 
     void playTone(tones tone, byte iterations = 0);
     void playMP3(String filepath, byte iterations = 1, unsigned gapMS = 0, unsigned long offsetBytes = 0, unsigned long samplesToPlay = 0);

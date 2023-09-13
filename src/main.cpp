@@ -498,6 +498,7 @@ void configureByNumber(String starcode){
 
 void callFailed(){
   player.queueGap(1000);
+  player.queueInfoTones(player.low_short, player.low_short, player.low_long); // number changed or disconnected
   player.queueSlice(SLICES.the_number_you_have_dialed);
   player.queueNumber(digits);
   player.queueSlice(SLICES.is_not_in_service);

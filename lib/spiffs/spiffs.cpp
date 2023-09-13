@@ -5,8 +5,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_spiffs.h"
-
-#include "SPIFFS.h"
+#include "spiffs.h"
 
 static const char *TAG = "SPIFFS";
 
