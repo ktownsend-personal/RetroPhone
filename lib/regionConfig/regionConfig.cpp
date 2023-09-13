@@ -4,14 +4,12 @@ RegionConfig::RegionConfig(regions regionToUse){
 
   // common settings for all regions
   region         = regionToUse;
-  howler.freqs     = new int[5]{4, 1400, 2060, 2450, 2600};
-  howler.cadence   = new int[3]{2, 100, 100};
-  howler.gain      = 2; // override gain for howler
+  howler.freqs   = new int[5]{4, 1400, 2060, 2450, 2600};
+  howler.cadence = new int[3]{2, 100, 100};
   zip.freqs      = new int[2]{1, 440};
   zip.cadence    = new int[3]{2, 200, 100};
   err.freqs      = new int[5]{4, 1400, 2060, 2450, 2600};
   err.cadence    = new int[3]{2, 150, 100};
-  err.gain       = 2;
 
   switch(regionToUse){
     case region_unitedKingdom:

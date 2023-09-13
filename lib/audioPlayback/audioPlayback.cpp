@@ -336,6 +336,7 @@ void playback_task(void *arg){
 void playback_tone(playbackQueue *pq, playbackDef tone){
 
   auto gap = (0 == tone.freq1 + tone.freq2 + tone.freq3 + tone.freq4);
+  byte volshift = 0;
 
   if(!gap){
     // starting at phase 0 makes the tones predictable and avoids sharp transition at start
@@ -344,12 +345,18 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
     t3.setFreq(tone.freq3); t3.setPhase(0);
     t4.setFreq(tone.freq4); t4.setPhase(0);
 
-    //NOTE: be careful setting this when there is still audio in the buffer; even if rate is the same you will get a skip in the audio
-    //NOTE: don't bother changing playback rate for silence because that can make previous audio in buffer change speed (although this changes duration calculation!)
+    // NOTE: be careful setting this when there is still audio in the buffer; even if rate is the same you will get a skip in the audio
+    // NOTE: don't bother changing playback rate for silence because that can make previous audio in buffer change speed (although this changes duration calculation!)
     if(currentPlaybackRate != AUDIO_RATE) {
       output->set_frequency(AUDIO_RATE);
       currentPlaybackRate = AUDIO_RATE;
     }
+
+    // dynamic volshift based on how many frequencies are getting mixed
+    if(tone.freq1 > 0) volshift = 1;
+    if(tone.freq2 > 0) volshift = 3;
+    if(tone.freq3 > 0) volshift = 3;
+    if(tone.freq4 > 0) volshift = 3;
   }
 
   unsigned long samples = CHUNK;
@@ -362,7 +369,7 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
     if(!gap){
       for(int x = 0; x < toGenerate; x++){                    // fill frame buffer with samples
         auto sum = t1.next()+t2.next()+t3.next()+t4.next();   // sum the next sample from all oscillators together
-        auto sample = (sum >> 3) << 8;                        // bitshift 3 to reduce amplitude (because we summed 4 oscillators), then bitshift 8 to upper 8 bits (onboard DAC only reads upper 8 bits)
+        auto sample = (sum >> volshift) << 8;                 // bitshift to upper 8 bits (onboard DAC only reads upper 8 bits)
         pcm[x*2]   = sample;                                  // left channel at even index
         pcm[x*2+1] = sample;                                  // right channel at odd index
       }
