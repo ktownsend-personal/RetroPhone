@@ -93,6 +93,7 @@ There is a lot of info in this README, but also some useful stuff in the [docs f
 * digitizing settings can be fairly low because a real phone system caps the upper frequency at 3400 Hz
 * could use an IO pin to control power to the hardware DTMF decoder and level shifter to reduce power consumption, but only if I want to run on a battery
 * PhoneDTMF software decoding might run better as a FreeRTOS task... needs experimentation
+* the DAC has left and right outputs, but since this project is mono we could use the same DAC to generate two independent mono signals if we get fancy with our audio generation loop; I don't have a scenario where that would be useful yet, but it's a cool idea
 
 ## C++ Tidbits
 Although I'm a seasoned software engineer, I'm new to C++ so I've got some notes others may find helpful.
