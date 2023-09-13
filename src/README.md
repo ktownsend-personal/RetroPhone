@@ -6,7 +6,9 @@ Follow [these instructions](<README-Convert to Arduino IDE.md>) to convert this 
 
 ## Where to start
 
-Start with main.cpp to get a feel for what this code is doing. The `setup()` and `loop()` functions are the entry points, just like any Arduino project.
+General configurations are in `src/config.h`
+
+Start with `main.cpp` to get a feel for what this code is doing. The `setup()` and `loop()` functions are the entry points, just like any Arduino project.
 
 I have encapsulated many of the functions as separate libraries to help me keep the concepts organized. I have also used a few libraries written by others, sometimes heavily modified for my needs. I try to document where I found things and what I changed in a README file within the library folder.
 
