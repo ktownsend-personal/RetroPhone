@@ -343,16 +343,17 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
     t2.setFreq(tone.freq2); t2.setPhase(0);
     t3.setFreq(tone.freq3); t3.setPhase(0);
     t4.setFreq(tone.freq4); t4.setPhase(0);
-  }
 
-  //NOTE: be careful setting this when there is still audio in the buffer; even if rate is the same you will get a skip in the audio
-  if(currentPlaybackRate != AUDIO_RATE) {
-    output->set_frequency(AUDIO_RATE);
-    currentPlaybackRate = AUDIO_RATE;
+    //NOTE: be careful setting this when there is still audio in the buffer; even if rate is the same you will get a skip in the audio
+    //NOTE: don't bother changing playback rate for silence because that can make previous audio in buffer change speed (although this changes duration calculation!)
+    if(currentPlaybackRate != AUDIO_RATE) {
+      output->set_frequency(AUDIO_RATE);
+      currentPlaybackRate = AUDIO_RATE;
+    }
   }
 
   unsigned long samples = CHUNK;
-  if(tone.duration > 0) samples = AUDIO_RATE * tone.duration * 0.001; // calculate number of samples to achieve duration
+  if(tone.duration > 0) samples = currentPlaybackRate * tone.duration * 0.001; // calculate number of samples to achieve duration
 
   while(samples > 0 && !pq->stopping) {                       // generate the samples in chunks
     auto toGenerate = (samples > CHUNK) ? CHUNK : samples;    // determine chunk size
