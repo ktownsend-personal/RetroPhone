@@ -18,7 +18,7 @@ auto pulser  = pulseHandler(PIN_SHK, dialingStartedCallback);
 auto dtmfer  = dtmfHandler(PIN_AUDIO_IN, dialingStartedCallback);
 auto dtmfmod = dtmfModule(PIN_Q1, PIN_Q2, PIN_Q3, PIN_Q4, PIN_STQ, dialingStartedCallback);
 auto region  = RegionConfig(region_northAmerica);
-auto player  = audioPlayback(region, 0); // core 0 starts audio plyaback faster than core 1 (the main loop is on core 1, wifi & bluetooth are core 0)
+auto player  = audioPlayback(region, 0); // core 0 better; core 1 delays mp3 playback start too much when splicing and requires larger tone chunk size to avoid underflowing buffer (the main loop is on core 1, wifi & bluetooth are core 0)
 auto status  = statusHandler<PIN_RGB>(100);
 
 void setup() {
