@@ -345,8 +345,9 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
     t3.setFreq(tone.freq3); t3.setPhase(0);
     t4.setFreq(tone.freq4); t4.setPhase(0);
 
-    // NOTE: be careful setting this when there is still audio in the buffer; even if rate is the same you will get a skip in the audio
-    // NOTE: don't bother changing playback rate for silence because that can make previous audio in buffer change speed (although this changes duration calculation!)
+    // NOTE: be careful setting this when there is still audio in the buffer because the change is immediate
+    // NOTE: don't set playback rate if it didn't change because that will cause a skip in playback
+    // NOTE: don't change playback rate for silence because it will make previous audio in buffer change speed; silence doesn't care what the rate is as long as we calculate the duration based on current speed
     if(currentPlaybackRate != AUDIO_RATE) {
       output->set_frequency(AUDIO_RATE);
       currentPlaybackRate = AUDIO_RATE;
