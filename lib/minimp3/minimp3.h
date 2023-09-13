@@ -6,7 +6,7 @@
     This software is distributed without any warranty.
     See <http://creativecommons.org/publicdomain/zero/1.0/>.
 */
-#include <stdint.h>
+#include "stdint.h"
 
 #define MINIMP3_MAX_SAMPLES_PER_FRAME (1152 * 2)
 
@@ -44,8 +44,8 @@ void mp3dec_f32_to_s16(const float *in, int16_t *out, int num_samples);
 #if defined(MINIMP3_IMPLEMENTATION) && !defined(_MINIMP3_IMPLEMENTATION_GUARD)
 #define _MINIMP3_IMPLEMENTATION_GUARD
 
-#include <stdlib.h>
-#include <string.h>
+#include "stdlib.h"
+#include "string.h"
 
 #define MAX_FREE_FORMAT_FRAME_SIZE 2304 /* more than ISO spec's */
 #ifndef MAX_FRAME_SYNC_MATCHES
@@ -94,9 +94,9 @@ void mp3dec_f32_to_s16(const float *in, int16_t *out, int num_samples);
 
 #if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || ((defined(__i386__) || defined(__x86_64__)) && defined(__SSE2__))
 #if defined(_MSC_VER)
-#include <intrin.h>
+#include "intrin.h"
 #endif /* defined(_MSC_VER) */
-#include <immintrin.h>
+#include "immintrin.h"
 #define HAVE_SSE 1
 #define HAVE_SIMD 1
 #define VSTORE _mm_storeu_ps
@@ -163,7 +163,7 @@ end:
 #endif /* MINIMP3_ONLY_SIMD */
 }
 #elif defined(__ARM_NEON) || defined(__aarch64__) || defined(_M_ARM64)
-#include <arm_neon.h>
+#include "arm_neon.h"
 #define HAVE_SSE 0
 #define HAVE_SIMD 1
 #define VSTORE vst1q_f32

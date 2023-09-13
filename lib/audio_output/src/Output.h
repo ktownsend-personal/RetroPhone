@@ -1,7 +1,7 @@
 #pragma once
 
-#include <freertos/FreeRTOS.h>
-#include <driver/i2s.h>
+#include "freertos/FreeRTOS.h"
+#include "driver/i2s.h"
 
 /**
  * Base Class for both the DAC and I2S output

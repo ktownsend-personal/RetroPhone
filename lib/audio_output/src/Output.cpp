@@ -1,7 +1,7 @@
 
 #include "Output.h"
-#include <esp_log.h>
-#include <driver/i2s.h>
+#include "esp_log.h"
+#include "driver/i2s.h"
 
 static const char *TAG = "OUT";
 
