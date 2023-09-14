@@ -16,7 +16,7 @@
 #include "minimp3.h"
 
 #define AUDIO_RATE 32768 // rate to use for tone generation; 32768 is the default rate for ESP32
-#define CHUNK 33 // samples per loop for tone generation; minimum 33 (1ms) for smooth audio on core 0 but other loads on core 0 may affect, like when we add wifi
+#define CHUNK 33 // samples per loop for tone generation; minimum 33 (1ms) for smooth audio on core 0 but other loads on same core may affect, like when we add wifi
                  // math: 33/32768Hz=1.0007ms; for comparison, mp3 decoder chunk sizes: 576/22050Hz=26.122ms, 1152/44100Hz=26.122ms
 
 //NOTE: I2S buffer overrun: 
@@ -349,6 +349,7 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
     // NOTE: be careful setting this when there is still audio in the buffer because the change is immediate
     // NOTE: don't set playback rate if it didn't change because that will cause a skip in playback
     // NOTE: don't change playback rate for silence because it will make previous audio in buffer change speed; silence doesn't care what the rate is as long as we calculate the duration based on current speed
+    // TODO: would it be useful to add a delay equal to the buffer play time when changing playback rate? Would need to do this for both tone and mp3 playback. The extra audio gap might be undesirable in some circumstances...need to experiment.
     if(currentPlaybackRate != AUDIO_RATE) {
       output->set_frequency(AUDIO_RATE);
       currentPlaybackRate = AUDIO_RATE;
