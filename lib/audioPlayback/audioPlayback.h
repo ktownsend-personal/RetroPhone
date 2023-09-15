@@ -7,26 +7,27 @@
 
 struct playbackDef {
   //---------tone---------//
-  unsigned int duration;
+  unsigned int duration;        // 0 = forever, otherwise milliseconds
   unsigned short freq1;
   unsigned short freq2;
   unsigned short freq3;
   unsigned short freq4;
   //---------mp3----------//
   String filepath;
-  unsigned long offsetBytes;
-  unsigned long samplesToPlay;
+  unsigned long offsetBytes;    // 0 = start
+  unsigned long samplesToPlay;  // 0 = until end
   //--------repeat--------//
-  short repeatIndex;
-  byte repeatTimes;
+  short repeatIndex;            // any preceding index in the queue
+  byte repeatTimes;             // 0 = forever, otherwise exact number of times
 };
 
 struct playbackQueue {
-  byte iterations;
+  byte iterations;              // 0 = entire queue forever, otherwise exact number of times
   short arraySize;
   playbackDef defs[128];
   bool stopping;
   short lastSample;
+  bool debug;
 };
 
 void playback_task(void *arg);
@@ -72,7 +73,7 @@ class audioPlayback
     void playMP3(String filepath, byte iterations = 1, unsigned gapMS = 0, unsigned long offsetBytes = 0, unsigned long samplesToPlay = 0);
     void playDTMF(String digits, unsigned toneTime = 40, unsigned spaceTime = 40);
 
-    void play(byte iterations = 1, unsigned gapMS = 0);
+    void play(byte iterations = 1, unsigned gapMS = 0, bool showDebug = false);
     void stop();
 
   private:

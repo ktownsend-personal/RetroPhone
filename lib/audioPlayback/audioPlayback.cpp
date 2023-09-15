@@ -75,13 +75,12 @@ void audioPlayback::changeRegion(RegionConfig region){
 }
 
 // starts playback of the queue for the given number of iterations (0 = infinite)
-void audioPlayback::play(byte iterations, unsigned gapMS){
+void audioPlayback::play(byte iterations, unsigned gapMS, bool showDebug){
   stop();                           // stop active playback, if any
   while(x_handle != NULL){          // wait for active task to stop (necessary due to both tasks trying to share static queue variable; new task simply ends if old task still active)
     vTaskDelay(pdMS_TO_TICKS(10));
   }
 
-  bool showDebug = false;
   if(gapMS > 0) queueGap(gapMS);
 
   // clone the queue for the task to use because memory is fickle
@@ -90,6 +89,7 @@ void audioPlayback::play(byte iterations, unsigned gapMS){
   queue.arraySize = pq->arraySize;
   queue.stopping = false;
   queue.lastSample = 0;
+  queue.debug = showDebug;
   if(showDebug) Serial.printf("\n\tsequence{len:%d,times:%d}", queue.arraySize, queue.iterations);
   for(int i = 0; i < pq->arraySize; i++){
     auto def = pq->defs[i];
@@ -107,6 +107,7 @@ void audioPlayback::play(byte iterations, unsigned gapMS){
       }
     }
   }
+  if(showDebug) Serial.println();
 
   pq->arraySize = 0; // reset source queue for next sequence config
 
@@ -283,9 +284,9 @@ void audioPlayback::queueInfoTones(infotones first, infotones second, infotones 
   }
 
   // NOTE:  The spec allows 100ms max between tones and message, but recommends as close to 0ms as possible...however we
-  //        need 130ms minimum to avoid challenges with mp3 changing playback speed before buffer finishes playing tone.
+  //        need 125ms minimum to avoid challenges with mp3 changing playback speed before buffer finishes playing tone.
   // TODO:  Figure out a way to sync playback speed change with buffer completing previous audio so we can reduce the gap.
-  queueGap(130);
+  queueGap(125);
 
 }
 
@@ -309,8 +310,10 @@ void audioPlayback::playMP3(String filepath, byte iterations, unsigned gapMS, un
 
 void playback_task(void *arg){
   auto queue = (playbackQueue*)arg;
+  auto debug = queue->debug;
   
   if(currentPlaybackRate == 0){                                 // initialize output at first playback
+    if(debug) Serial.println("Initializing audio");
     currentPlaybackRate = AUDIO_RATE;
     output->start(AUDIO_RATE);                                  // start with rate we use for tones, but it can change when playing MP3's
     antipop(-128, 0, 500);                                      // trying to soften the I2S/DAC startup pop
@@ -319,13 +322,18 @@ void playback_task(void *arg){
 
   do {                                                          // loop iterations
     for(byte idx = 0; idx < queue->arraySize; idx++){           // loop the queue
+      if(queue->stopping) break;                                // abort if task is stopping
+      if(debug) Serial.print(".");
       auto def = queue->defs[idx];
-      if(def.repeatTimes != 1 && !queue->stopping) {            // check repeater
+      if(def.repeatTimes != 1) {                                // check repeater
+        queue->defs[idx].repeatTimes -= 1;                      // decrement remaining repeats before changing idx
         idx = def.repeatIndex - 1;                              // go back to starting def of repeat sequence
-        continue;
+        if(debug) Serial.printf("Repeat %d times from index %d\n", def.repeatTimes, def.repeatIndex);
+      } else if(def.filepath != "") {
+        playback_mp3(queue, def);                               // play the mp3 segment
+      } else if(def.duration + def.freq1 > 0) {
+        playback_tone(queue, def);                              // play the tone segment
       }
-      if(def.filepath == "") playback_tone(queue, def);         // play the tone segment
-      if(def.filepath != "") playback_mp3(queue, def);          // play the mp3 segment
     }
   } while(queue->iterations-- != 1 && !queue->stopping);        // stop on last iteration (if iterations started at 0 then loop until notified to stop)
 
@@ -338,6 +346,8 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
 
   auto gap = (0 == tone.freq1 + tone.freq2 + tone.freq3 + tone.freq4);
   byte volshift = 0;
+  auto debug = pq->debug;
+  if(debug) Serial.printf("%s for %dms\n", gap?"gap":"tone", tone.duration);
 
   if(!gap){
     // starting at phase 0 makes the tones predictable and avoids sharp transition at start
@@ -351,6 +361,7 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
     // NOTE: don't change playback rate for silence because it will make previous audio in buffer change speed; silence doesn't care what the rate is as long as we calculate the duration based on current speed
     // TODO: would it be useful to add a delay equal to the buffer play time when changing playback rate? Would need to do this for both tone and mp3 playback. The extra audio gap might be undesirable in some circumstances...need to experiment.
     if(currentPlaybackRate != AUDIO_RATE) {
+      if(debug) Serial.printf("changing audio rate from %d to %d\n", currentPlaybackRate, AUDIO_RATE);
       output->set_frequency(AUDIO_RATE);
       currentPlaybackRate = AUDIO_RATE;
     }
@@ -386,6 +397,8 @@ void playback_tone(playbackQueue *pq, playbackDef tone){
 }
 
 void playback_mp3(playbackQueue *pq, playbackDef mp3){
+  auto debug = pq->debug;
+  if(debug) Serial.printf("playing mp3 %s\n", mp3.filepath.c_str());
 
   SPIFFS spiffs = SPIFFS("/fs");                    // open the file system
   auto fp = fopen(mp3.filepath.c_str(), "rb");      // open the file
@@ -407,6 +420,7 @@ void playback_mp3(playbackQueue *pq, playbackDef mp3){
   unsigned long samples_cutoff = 0;
   unsigned long samples_played = 0;
   unsigned long bytes_played = 0;
+  unsigned long cycles_buffered = 0;
 
   do {
     pq->stopping |= ulTaskNotifyTake(pdTRUE, 0);    // flag if we've been told to stop
@@ -422,11 +436,7 @@ void playback_mp3(playbackQueue *pq, playbackDef mp3){
       if (!is_output_started) {                     // start output stream when we start getting samples from decoder
         is_output_started = true;
         if(mp3.samplesToPlay > 0) samples_cutoff = mp3.samplesToPlay; // put a cap on how many samples to play
-        //NOTE: be careful setting this when there is still audio in the buffer; even if rate is the same you will get a skip in the audio
-        if(currentPlaybackRate != info.hz) {
-          output->set_frequency(info.hz);
-          currentPlaybackRate = info.hz;
-        }
+        if(debug) Serial.println("beginning mp3 audio");
       }
       if(samples_cutoff > 0 && (samples_played + samples) > samples_cutoff) {
         samples = (samples_cutoff - samples_played);// only send what we need if we reached end of specified segment
@@ -442,9 +452,20 @@ void playback_mp3(playbackQueue *pq, playbackDef mp3){
       samples_played += samples;                    // track how many samples have been output so we know when we hit our cutoff
       bytes_played += info.frame_bytes;             // tracking how many bytes of audio we play for manual slicing calculations
       pq->lastSample = pcm[(samples-1)*2];          // track last sample to feed antipopFinish() when we finish
+
+      //NOTE: be careful setting this when there is still audio in the buffer; even if rate is the same you will get a skip in the audio
+      //NOTE: doing this after writing bytes to buffer to see if we can shorten the timing since setting frequency is immediate
+      //NOTE: we used to do this check inside if(!is_output_started){}, which is logically correct but we are strugging with timing vs. previous audio still playing
+      if(currentPlaybackRate != info.hz) {
+        if(debug) Serial.printf("changing audio rate from %d to %d\n", currentPlaybackRate, info.hz);
+        output->set_frequency(info.hz);
+        currentPlaybackRate = info.hz;
+      }
     }
     vTaskDelay(pdMS_TO_TICKS(1));                   // feed the watchdog
   } while(info.frame_bytes && !pq->stopping && !lastIteration);
+
+  if(debug) Serial.println("ending mp3 audio");
 
   //cleanup
   if(mp3.samplesToPlay > 0) antipop(0, 0, 1024*4);  // filling buffer with silence resolves stuttering on slices by giving time for overhead of seeking to next slice
