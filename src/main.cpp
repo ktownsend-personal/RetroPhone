@@ -34,11 +34,10 @@ void setup() {
   pinMode(PIN_BTN, INPUT_PULLDOWN);
   pinMode(PIN_SHK, INPUT_PULLUP);
 
-  ringer.init(PIN_RM, PIN_FR, CH_FR);
-
   settingsInit();
   if(!softwareDTMF && detectMT870) existsDTMF_module();
 
+  ringer.init(PIN_RM, PIN_FR, CH_FR);
   ringer.setCounterCallback(ringCountCallback);
   pulser.setMaybeCallback(maybeDialingStartedCallback);
   pulser.setDigitCallback(digitReceivedCallback);
