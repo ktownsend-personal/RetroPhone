@@ -10,6 +10,7 @@
 #include "dtmfModule.h"
 #include "Preferences.h"
 #include "statusHandler.h"
+#include "wifiHandler.h"
 
 String digits; // this is where we accumulate dialed digits
 auto prefs   = Preferences();
@@ -20,6 +21,7 @@ auto dtmfmod = dtmfModule(PIN_Q1, PIN_Q2, PIN_Q3, PIN_Q4, PIN_STQ, dialingStarte
 auto region  = RegionConfig(region_northAmerica);
 auto player  = audioPlayback(region, 0); // core 0 better; core 1 delays mp3 playback start too much when splicing and requires larger tone chunk size to avoid underflowing buffer (the main loop is on core 1, wifi & bluetooth are core 0)
 auto status  = statusHandler<PIN_RGB>(100);
+auto comms   = wifiHandler();
 
 void setup() {
   Serial.begin(115200);
@@ -459,6 +461,53 @@ void configureByNumber(String starcode){
         case 31: return sliceit(SLICES.or_dial_directory_assistance);
       }
     }
+
+    case '6':
+      switch(starcode[2]){
+        case '1':
+          comms.showNetworks();
+          success = true;
+          break;
+      }
+      break;
+
+    case '7':
+      switch(starcode[2]){
+        case '1':
+          Serial.println("starting console mode");
+          String command;
+          bool reenter = false;
+          while(command != "exit"){
+            command = ""; // reset command
+            Serial.print("\nEnter command: ");
+            player.queueSlice(reenter ? SLICES.re_enter : SLICES.enter_service_code);
+            player.play();
+            while(true){
+              reenter = false;
+              command = Serial.readStringUntil('\n');
+              if(command == "") continue; // loop until we get a command
+              if(command == "exit") {
+                Serial.println("exiting serial input mode");
+                player.playTone(player.zip, 1);
+              } else if(command == "test") {
+                Serial.println("test input successful");
+                player.playTone(player.zip, 1);
+              } else if (command == "networks") {
+                comms.showNetworks();
+                player.playTone(player.zip, 1);
+              } else {
+                Serial.println("unrecognized command");
+                player.playTone(player.err, 2);
+                reenter = true;
+              }
+              delay(600);
+              break;
+            }
+          }
+          skipack = true;
+          break;
+      }
+      break;
   }
 
   if(!skipack) {
@@ -470,7 +519,7 @@ void configureByNumber(String starcode){
     }
   }
 
-  modeDefer(call_ready, 1000);
+  modeDefer(call_ready, 600);
 }
 
 void callFailed(){
