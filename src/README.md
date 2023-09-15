@@ -66,7 +66,7 @@ The [lib/pulseHandler](../lib/pulseHandler/) library handles detection of pulse 
 ### Star-Code Menu
 This is currently managed as a function in `main.cpp` but I might try extracting it to a library later. 
 
-This feature allows us to change options at runtime, such as the region used for ringing and progress tones and more.
+This feature allows us to change options or initiate actions at runtime, such as the region used for ringing and progress tones. See [README-Star-Code Menu.md](README-Star-Code%20Menu.md) for commands.
 
 ### Status LED
 The [lib/statusHandler](../lib/statusHandler/) runs our addressable RBG LED to indicate the current call mode. We are using the [FastLED](https://fastled.io/) library. See README file in that folder for more information.
