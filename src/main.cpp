@@ -14,7 +14,7 @@
 
 String digits; // this is where we accumulate dialed digits
 auto prefs   = Preferences();
-auto ringer  = ringHandler(PIN_RM, PIN_FR, CH_FR);
+auto ringer  = ringHandler();
 auto pulser  = pulseHandler(PIN_SHK, dialingStartedCallback);
 auto dtmfer  = dtmfHandler(PIN_AUDIO_IN, dialingStartedCallback);
 auto dtmfmod = dtmfModule(PIN_Q1, PIN_Q2, PIN_Q3, PIN_Q4, PIN_STQ, dialingStartedCallback);
@@ -24,6 +24,8 @@ auto status  = statusHandler<PIN_RGB>(100);
 auto comms   = wifiHandler();
 
 void setup() {
+  delay(1000); // general startup delay in case resources are still getting going 
+
   Serial.begin(115200);
   Serial.println();
   Serial.println("RetroPhone, by Keith Townsend");
@@ -31,6 +33,8 @@ void setup() {
   pinMode(PIN_LED, OUTPUT);
   pinMode(PIN_BTN, INPUT_PULLDOWN);
   pinMode(PIN_SHK, INPUT_PULLUP);
+
+  ringer.init(PIN_RM, PIN_FR, CH_FR);
 
   settingsInit();
   if(!softwareDTMF && detectMT870) existsDTMF_module();

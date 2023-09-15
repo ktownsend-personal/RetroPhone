@@ -1,6 +1,6 @@
 #include "ringHandler.h"
 
-ringHandler::ringHandler(unsigned pinRM, unsigned pinFR, unsigned channelFR) {
+void ringHandler::init(unsigned pinRM, unsigned pinFR, unsigned channelFR) {
   RMpin = pinRM;
   FRch = channelFR;
   pinMode(pinRM, OUTPUT);

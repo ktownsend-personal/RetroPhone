@@ -7,7 +7,6 @@ dtmfHandler::dtmfHandler(unsigned pinDTMF, void (*callback)(bool)) {
   PIN = pinDTMF;
   dialingStartedCallback = callback;
   pinMode(PIN, INPUT);
-  dtmf.begin(PIN);
 }
 
 void dtmfHandler::setDigitCallback(void (*callback)(char)) {
@@ -17,6 +16,7 @@ void dtmfHandler::setDigitCallback(void (*callback)(char)) {
 void dtmfHandler::start(){
   newDTMF = true;
   currentDTMF = 0;
+  dtmf.begin(PIN);
 
   // just some info to see when debugging
   // Serial.printf("DTMF: controller sample frequency limit: %d\n", dtmf.getSampleFrequence());

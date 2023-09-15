@@ -5,7 +5,7 @@
 
 class ringHandler {
   public:
-    ringHandler(unsigned pinRM, unsigned pinFR, unsigned channelFR);
+    void init(unsigned pinRM, unsigned pinFR, unsigned channelFR);
     void setCounterCallback(void (*callback)(const int));
     void start(int freq, int* cadence);
     void run();
