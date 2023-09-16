@@ -4,6 +4,6 @@
 
 class wifiHandler {
   public:
-    wifiHandler();
+    void init();
     void showNetworks();
 };

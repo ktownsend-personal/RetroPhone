@@ -1,6 +1,5 @@
 /*
-  TODO: add star-code for showing connection status with IP, SSID and RSSI (signal strength)
-  TODO: add star-code for listing available networks (probably evolve this into interactively establishing a new connection via serial)
+  TODO: add *70 for showing connection status with IP, SSID and RSSI (signal strength)
   TODO: web server and mechanism to startup in AP mode to configure wifi connection (is there something existing for this?)
   TODO: web server for configuring other app settings
   TODO: periodically ensure still connected
@@ -13,7 +12,7 @@
 #include "wifiHandler.h"
 #include "WiFi.h"
 
-wifiHandler::wifiHandler(){
+void wifiHandler::init(){
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
     delay(100);

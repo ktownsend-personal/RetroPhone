@@ -2,26 +2,31 @@
 #include "main.h"
 #include "config.h"
 #include "progressModes.h"
+#include "regionConfig.h"
+#include "Preferences.h"
 #include "ringHandler.h"
 #include "pulseHandler.h"
-#include "audioPlayback.h"
-#include "audioSlices.h"
 #include "dtmfHandler.h"
 #include "dtmfModule.h"
-#include "Preferences.h"
+#include "audioPlayback.h"
+#include "audioSlices.h"
 #include "statusHandler.h"
 #include "wifiHandler.h"
+#include "WiFiManager.h"  // https://github.com/tzapu/WiFiManager
 
 String digits; // this is where we accumulate dialed digits
 auto prefs   = Preferences();
+auto region  = RegionConfig(region_northAmerica);
 auto ringer  = ringHandler();
 auto pulser  = pulseHandler(PIN_SHK, dialingStartedCallback);
 auto dtmfer  = dtmfHandler(PIN_AUDIO_IN, dialingStartedCallback);
 auto dtmfmod = dtmfModule(PIN_Q1, PIN_Q2, PIN_Q3, PIN_Q4, PIN_STQ, dialingStartedCallback);
-auto region  = RegionConfig(region_northAmerica);
 auto player  = audioPlayback(region, 0); // core 0 better; core 1 delays mp3 playback start too much when splicing and requires larger tone chunk size to avoid underflowing buffer (the main loop is on core 1, wifi & bluetooth are core 0)
 auto status  = statusHandler<PIN_RGB>(100);
 auto comms   = wifiHandler();
+
+WiFiManager wm;
+bool connected = false;
 
 void setup() {
   delay(1000); // general startup delay in case resources are still getting going 
@@ -43,6 +48,14 @@ void setup() {
   pulser.setDigitCallback(digitReceivedCallback);
   dtmfer.setDigitCallback(digitReceivedCallback);
   dtmfmod.setDigitCallback(digitReceivedCallback);
+  comms.init();
+
+  // WIFI auto-connect & config portal
+  wm.setConfigPortalBlocking(false);
+  wm.setConfigPortalTimeout(60);
+  auto id = String("RetroPhone_") + String(ESP.getEfuseMac());
+  connected = wm.autoConnect(id.c_str());
+  Serial.println(connected ? "WiFi connected" : "WiFi config portal running for 60 seconds");
 
   modeStart(mode); // set initial mode
 }
@@ -136,12 +149,13 @@ void settingsInit(){
 }
 
 void loop() {
-  modeRun(mode);                        // always run the current mode before modeDetect() because mode can change during modeRun()
-  modeDeferCheck();                     // check if deferred mode ready to activate
-  deferActionCheckElapsed();            // check if a deferred action is waiting to run
-  modes newmode = modeDetect();         // check inputs for new mode
-  if(modeBouncing(newmode)) return;     // wait for bounce to settle
-  if(newmode != mode) modeGo(newmode);  // switch to new mode
+  if(!connected) connected = wm.process();  // process non-blocking wifi config portal if not yet connected
+  modeRun(mode);                            // always run the current mode before modeDetect() because mode can change during modeRun()
+  modeDeferCheck();                         // check if deferred mode ready to activate
+  deferActionCheckElapsed();                // check if a deferred action is waiting to run
+  modes newmode = modeDetect();             // check inputs for new mode
+  if(modeBouncing(newmode)) return;         // wait for bounce to settle
+  if(newmode != mode) modeGo(newmode);      // switch to new mode
 }
 
 bool modeBouncing(modes newmode) {
