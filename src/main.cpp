@@ -29,8 +29,6 @@ WiFiManager wm;
 bool connected = false;
 
 void setup() {
-  delay(1000); // general startup delay in case resources are still getting going 
-
   Serial.begin(115200);
   Serial.println();
   Serial.println("RetroPhone, by Keith Townsend");
