@@ -16,7 +16,7 @@
 #include "minimp3.h"
 
 #define AUDIO_RATE 32768 // rate to use for tone generation; 32768 is the default rate for ESP32
-#define CHUNK 33 // samples per loop for tone generation; minimum 33 (1ms) for smooth audio on core 0 but other loads on same core may affect, like when we add wifi
+#define CHUNK 50 // samples per loop for tone generation; minimum 33 (1ms) for smooth audio on core 0 but other loads on same core may affect, like when we add wifi
                  // math: 33/32768Hz=1.0007ms; for comparison, mp3 decoder chunk sizes: 576/22050Hz=26.122ms, 1152/44100Hz=26.122ms
 
 //NOTE: I2S buffer overrun: 
