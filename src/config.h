@@ -4,7 +4,7 @@
 #define PIN_LED      2      // using onboard LED for basic off-hook status
 #define PIN_RGB      21     // addressable RGB for call progress mode status
 #define PIN_BTN      12     // external button to initiate ringing
-#define PIN_AUDIO_IN 14     // software DTMF and future live audio digitization
+#define PIN_AUDIO_IN 32     // software DTMF and future live audio digitization
 
 // Internal DAC pins        // just defining so I remember these are used by the audio libraries
 #define PIN_AUDIO_OUT_L 25  // left  output channel pin for internal DAC
@@ -12,8 +12,8 @@
 
 // SLIC module
 #define PIN_SHK 13          // SLIC SHK, off-hook
-#define PIN_RM  32          // SLIC RM, ring mode enable
-#define PIN_FR  33          // SLIC FR, ring toggle, use PWM 50%
+#define PIN_RM  22          // SLIC RM, ring mode enable
+#define PIN_FR  23          // SLIC FR, ring toggle, use PWM 50%
 #define CH_FR   0           // SLIC FR, PWM channel
 
 // DTMF module
