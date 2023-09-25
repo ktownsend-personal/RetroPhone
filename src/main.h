@@ -1,5 +1,4 @@
-#ifndef main_h
-#define main_h
+#pragma once
 
 #include "Arduino.h"
 #include "progressModes.h"
@@ -37,5 +36,6 @@ void dialingStartedCallback(bool isTone);
 void digitReceivedCallback(char);
 void configureByNumber(String starcode);
 void callFailed();
-
-#endif
+void terminal();
+bool testMp3slice(String starcode);
+bool testMp3file(String starcode);

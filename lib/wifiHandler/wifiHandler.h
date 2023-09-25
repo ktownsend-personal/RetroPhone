@@ -6,4 +6,5 @@ class wifiHandler {
   public:
     void init();
     void showNetworks();
+    void showStatus();
 };

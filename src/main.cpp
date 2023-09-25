@@ -3,7 +3,7 @@
 #include "config.h"
 #include "progressModes.h"
 #include "regionConfig.h"
-#include "Preferences.h"
+#include "prefsHandler.h"
 #include "ringHandler.h"
 #include "pulseHandler.h"
 #include "dtmfHandler.h"
@@ -15,8 +15,8 @@
 #include "WiFiManager.h"  // https://github.com/tzapu/WiFiManager
 
 String digits; // this is where we accumulate dialed digits
-auto prefs   = Preferences();
 auto region  = RegionConfig(region_northAmerica);
+auto prefs   = prefsHandler();
 auto ringer  = ringHandler();
 auto pulser  = pulseHandler(PIN_SHK, dialingStartedCallback);
 auto dtmfer  = dtmfHandler(PIN_AUDIO_IN, dialingStartedCallback);
@@ -126,24 +126,21 @@ bool testDTMF_module(String digits, int toneTime, int spaceTime, bool showSend, 
   bool pass = (unread + misread == 0);
   if(showSend && !pass) Serial.println();
   if(!showSend || !pass) Serial.printf("\t%s", result.c_str());
-  Serial.printf(" --> %sED: ", pass ? "PASS" : "FAIL");
+  Serial.printf(" @ %d/%d ms --> ", toneTime, spaceTime);
   if(unread > 0) Serial.printf("%d unread, ", unread);
   if(misread > 0) Serial.printf("%d misread, ", misread);
-  Serial.printf("%d/%d ms\n", toneTime, spaceTime);
+  Serial.printf("%sED\n", pass ? "PASS" : "FAIL");
   return reads.length() > 0;  // simply returning whether we detected the module
 }
 
 void settingsInit(){
   delay(50);  // this delay resolved a timing issue accessing Preferences.h, but not sure what the timing issue actually is (filesystem not ready yet, or some other activity?)
-  prefs.begin("phone", false);
-  bool dtmfmode = prefs.getBool("dtmf", false);
-  Serial.printf("\tUsing %s DTMF detection. Dial *20 for hardware, *21 for software.\n", dtmfmode ? "software" : "hardware");
-  softwareDTMF = dtmfmode;
-  regions r = (regions)prefs.getInt("region", (int)region_northAmerica);
+  softwareDTMF = prefs.getDTMF();
+  Serial.printf("\tUsing %s DTMF detection. Dial *20 for hardware, *21 for software.\n", softwareDTMF ? "software" : "hardware");
+  regions r = (regions)prefs.getRegion();
   region = RegionConfig(r);
   player.changeRegion(region);
   Serial.printf("\tUsing %s sounds and ring style. Dial *11 for North America, *12 for United Kingdom.\n", region.label.c_str());
-  prefs.end();
 }
 
 void loop() {
@@ -335,9 +332,22 @@ void digitReceivedCallback(char digit){
 }
 
 void configureByNumber(String starcode){
-  bool success = false;
-  bool skipack = false;
-  bool changed = false;
+
+  auto rest = []()-> void {
+    modeDefer(call_ready, 600);
+  };
+
+  auto ack = [rest]()-> void {
+    player.playTone(player.zip, 1);
+    rest();
+  };
+
+  auto err = [rest]()-> void {
+    player.playTone(player.err, 2);
+    Serial.print("unrecognized star-code");
+    rest();
+  };
+  
   if(starcode[0] != '*') return;
   switch(starcode[1]){
 
@@ -345,57 +355,45 @@ void configureByNumber(String starcode){
       switch(starcode[2]){
         case '0': // show current region
           Serial.printf("region is %s", region.label.c_str());
-          success = true;
-          break;
+          return ack();
         case '1': // region North America
           region = RegionConfig(region_northAmerica);
           player.changeRegion(region);
-          prefs.begin("phone", false);
-          prefs.putInt("region", region_northAmerica);
-          prefs.end();
+          prefs.setRegion(region_northAmerica);
           Serial.printf("region set to %s", region.label.c_str());
-          success = true;
-          break;
+          return ack();
         case '2': // region United Kingdom
           region = RegionConfig(region_unitedKingdom);
           player.changeRegion(region);
-          prefs.begin("phone", false);
-          prefs.putInt("region", region_unitedKingdom);
-          prefs.end();
+          prefs.setRegion(region_unitedKingdom);
           Serial.printf("region set to %s", region.label.c_str());
-          success = true;
-          break;
+          return ack();
       }
       break;
 
-    case '2': // select hardware or software DTMF
+    case '2': { // select hardware or software DTMF
+
+      auto change = [ack](bool value){
+        if(value != softwareDTMF){
+          softwareDTMF = value;
+          prefs.setDTMF(softwareDTMF);
+        }
+        Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
+        return ack();
+      };
+
       switch(starcode[2]){
-        case '0':
-          changed = softwareDTMF;   // check this before changing
-          softwareDTMF = false;
-          success = true;
-          break;
-        case '1':
-          changed = !softwareDTMF;  // check this before changing
-          softwareDTMF = true;
-          success = true;
-          break;
+        case '0': return change(false);
+        case '1': return change(true);
         case '2':
           player.playDTMF("D", 75, 0);
-          if (wait(500)) return; // wait or abort if user hangs up
           Serial.print("cleared DTMF module LEDs");
-          return modeGo(call_ready); // skip ack tone
+          return rest();
       }
-      if(changed){
-        prefs.begin("phone", false);
-        prefs.putBool("dtmf", softwareDTMF);
-        prefs.end();
-      }
-      if(success) Serial.printf("DTMF using %s decoder", softwareDTMF ? "software" : "hardware");
       break;
+    }
 
     case '3': {       // DTMF module speed test; last digit is max iterations, or zero to go until nothing reads successfully
-      skipack = true; // must skip normal ack so the D tone at end of the loop can clear the module's LED's
       const String digits = "1234567890*#ABCD";
       int start = 39;
       byte num = starcode[2] - '0';
@@ -403,138 +401,31 @@ void configureByNumber(String starcode){
       Serial.printf("testing DTMF module speed for maximum %d iterations...\n", start-floor);
       for(int duration = start; duration > floor; duration--)
         if(!testDTMF_module(digits, duration, duration)) break;
-      break;
+      return rest();
     }
 
-    case '4': {
-      //NOTE: managing the success tone and mode switch directly so we can get the timing right
-      auto play = [](String filepath, unsigned milliseconds)-> void {
-        Serial.printf("testing MP3 playback [%s]...", filepath.c_str());
-        player.playMP3(filepath);
-        if (wait(milliseconds + 800)) return; // attempting to delay exactly the right amount of time before switching mode, but abort if user hangs up
-        player.playTone(player.zip, 1);
-        modeDefer(call_ready, 500);
-      };
-      switch(starcode[2]){
-        case '1': return play("/fs/circuits-xxx-anna.mp3",        7706);
-        case '2': return play("/fs/complete2-bell-f1.mp3",        8856);
-        case '3': return play("/fs/discoornis-bell-f1.mp3",       10109);
-        case '4': return play("/fs/timeout-bell-f1.mp3",          7367);
-        case '5': return play("/fs/svcoroption-xxx-anna.mp3",     12434);
-        case '6': return play("/fs/anna-1DSS-default-vocab.mp3",  26776);
-        case '7': return play("/fs/feature5-xxx-anna.mp3",        1881);
-        case '8': return play("/fs/feature6-xxx-anna.mp3",        1802);
-      }
-    }
-
-    case '5': {
-      //NOTE: managing the success tone and mode switch directly so we can get the timing right
-
-      auto sliceit = [](sliceConfig slice)-> void {
-        Serial.printf("testing MP3 slice [%s]...", slice.label.c_str());
-        player.queueSlice(slice);
-        player.play();
-        if (wait(slice.samplesToPlay/44.1 + 500)) return; // attempting to delay exactly the right amount of time before switching mode, but abort if user hangs up
-        player.playTone(player.zip, 1);
-        modeDefer(call_ready, 1000);
-      };
-
-      byte option = (starcode[2]-'0') * 10 + (starcode[3]-'0');
-
-      switch(option){
-        case 0:  return sliceit(SLICES.zero);
-        case 1:  return sliceit(SLICES.one);
-        case 2:  return sliceit(SLICES.two);
-        case 3:  return sliceit(SLICES.three);
-        case 4:  return sliceit(SLICES.four);
-        case 5:  return sliceit(SLICES.five);
-        case 6:  return sliceit(SLICES.six);
-        case 7:  return sliceit(SLICES.seven);
-        case 8:  return sliceit(SLICES.eight);
-        case 9:  return sliceit(SLICES.nine);
-        case 10: return sliceit(SLICES.zero_alt);
-        case 11: return sliceit(SLICES.please_note);
-        case 12: return sliceit(SLICES.this_is_a_recording);
-        case 13: return sliceit(SLICES.has_been_changed);
-        case 14: return sliceit(SLICES.the_number_you_have_dialed);
-        case 15: return sliceit(SLICES.is_not_in_service);
-        case 16: return sliceit(SLICES.please_check_the_number_and_dial_again);
-        case 17: return sliceit(SLICES.the_number_dialed);
-        case 18: return sliceit(SLICES.the_new_number_is);
-        case 19: return sliceit(SLICES.enter_function);
-        case 20: return sliceit(SLICES.please_enter);
-        case 21: return sliceit(SLICES.area_code);
-        case 22: return sliceit(SLICES.new_number);
-        case 23: return sliceit(SLICES.invalid);
-        case 24: return sliceit(SLICES.not_available);
-        case 25: return sliceit(SLICES.enter_service_code);
-        case 26: return sliceit(SLICES.deleted);
-        case 27: return sliceit(SLICES.category);
-        case 28: return sliceit(SLICES.date);
-        case 29: return sliceit(SLICES.re_enter);
-        case 30: return sliceit(SLICES.thank_you);
-        case 31: return sliceit(SLICES.or_dial_directory_assistance);
-      }
-    }
+    case '4': return testMp3file(starcode) ? ack() : err();
+    case '5': return testMp3slice(starcode) ? ack() : err();
 
     case '6':
       switch(starcode[2]){
+        case '0':
+          comms.showStatus();
+          return ack();
         case '1':
           comms.showNetworks();
-          success = true;
-          break;
+          return ack();
       }
       break;
 
     case '7':
       switch(starcode[2]){
-        case '1':
-          Serial.println("starting console mode");
-          String command;
-          bool reenter = false;
-          while(command != "exit"){
-            command = ""; // reset command
-            Serial.print("\nEnter command: ");
-            player.queueSlice(reenter ? SLICES.re_enter : SLICES.enter_service_code);
-            player.play();
-            while(true){
-              reenter = false;
-              command = Serial.readStringUntil('\n');
-              if(command == "") continue; // loop until we get a command
-              if(command == "exit") {
-                Serial.println("exiting serial input mode");
-                player.playTone(player.zip, 1);
-              } else if(command == "test") {
-                Serial.println("test input successful");
-                player.playTone(player.zip, 1);
-              } else if (command == "networks") {
-                comms.showNetworks();
-                player.playTone(player.zip, 1);
-              } else {
-                Serial.println("unrecognized command");
-                player.playTone(player.err, 2);
-                reenter = true;
-              }
-              delay(600);
-              break;
-            }
-          }
-          skipack = true;
-          break;
+        case '1': return terminal(); // ack tones handled by function, so skipping it here
       }
       break;
   }
 
-  if(!skipack) {
-    if(success) {
-      player.playTone(player.zip, 1);
-    } else {
-      player.playTone(player.err, 2);
-      Serial.print("unrecognized star-code");
-    }
-  }
-
-  modeDefer(call_ready, 600);
+  err();  // if we get here the starcode wasn't handled
 }
 
 void callFailed(){
@@ -549,3 +440,143 @@ void callFailed(){
   player.queueTone(player.reorder);
   player.play();
 }
+
+void terminal(){
+  Serial.println("starting console mode; enter 'help' for list of commands");
+  String command;
+  bool reenter = false;
+  while(command != "exit"){
+    command = ""; // reset command
+    Serial.print("\nEnter command: ");
+    player.queueSlice(reenter ? SLICES.re_enter : SLICES.enter_service_code);
+    player.play();
+    while(true){
+      reenter = false;
+      command = Serial.readStringUntil('\n');
+      if(command == "") continue; // loop until we get a command
+      if(command == "exit") {
+        Serial.println("exiting serial input mode");
+      } else if(command == "help") {
+        Serial.println("available commands:");
+        Serial.println("\thelp");
+        Serial.println("\texit");
+        Serial.println("\tnetwork status");
+        Serial.println("\tnetwork list");
+        Serial.println("\tregion na");
+        Serial.println("\tregion uk");
+        Serial.println("\tdtmf software");
+        Serial.println("\tdtmf hardware");
+        Serial.println("\tdtmf module speed test");
+      } else if (command == "network status") {
+        comms.showStatus();
+      } else if (command == "network list") {
+        comms.showNetworks();
+      } else if (command == "region na") {
+        region = RegionConfig(region_northAmerica);
+        player.changeRegion(region);
+        prefs.setRegion(region_northAmerica);
+        Serial.printf("region set to %s\n", region.label.c_str());
+      } else if (command == "region uk") {
+        region = RegionConfig(region_unitedKingdom);
+        player.changeRegion(region);
+        prefs.setRegion(region_unitedKingdom);
+        Serial.printf("region set to %s\n", region.label.c_str());
+      } else if (command == "dtmf software") {
+        softwareDTMF = true;
+        prefs.setDTMF(true);
+        Serial.println("using software DTMF decoder");
+      } else if (command == "dtmf hardware") {
+        softwareDTMF = false;
+        prefs.setDTMF(false);
+        Serial.println("using hardware DTMF decoder");
+      } else if (command == "dtmf module speed test") {
+        const String digits = "1234567890*#ABCD";
+        int start = 39;
+        Serial.println("testing DTMF module speed until all digits fail...");
+        for(int duration = start; duration > 0; duration--)
+          if(!testDTMF_module(digits, duration, duration, false, true)) break;
+      } else {
+        Serial.println("unrecognized command");
+        player.playTone(player.err, 2);
+        reenter = true;
+        delay(600);
+        break;
+      }
+      player.playTone(player.zip, 1);
+      delay(600);
+      break;
+    }
+  }
+}
+
+bool testMp3slice(String starcode){
+  //NOTE: managing the success tone and mode switch directly so we can get the timing right
+
+  auto sliceit = [](sliceConfig slice)-> bool {
+    Serial.printf("testing MP3 slice [%s]...", slice.label.c_str());
+    player.queueSlice(slice);
+    player.play();
+    wait(slice.samplesToPlay/44.1 + 500); // attempting to delay exactly the right amount of time before switching mode, but abort if user hangs up
+    return true;
+  };
+
+  byte option = (starcode[2]-'0') * 10 + (starcode[3]-'0');
+
+  switch(option){
+    case 0:  return sliceit(SLICES.zero);
+    case 1:  return sliceit(SLICES.one);
+    case 2:  return sliceit(SLICES.two);
+    case 3:  return sliceit(SLICES.three);
+    case 4:  return sliceit(SLICES.four);
+    case 5:  return sliceit(SLICES.five);
+    case 6:  return sliceit(SLICES.six);
+    case 7:  return sliceit(SLICES.seven);
+    case 8:  return sliceit(SLICES.eight);
+    case 9:  return sliceit(SLICES.nine);
+    case 10: return sliceit(SLICES.zero_alt);
+    case 11: return sliceit(SLICES.please_note);
+    case 12: return sliceit(SLICES.this_is_a_recording);
+    case 13: return sliceit(SLICES.has_been_changed);
+    case 14: return sliceit(SLICES.the_number_you_have_dialed);
+    case 15: return sliceit(SLICES.is_not_in_service);
+    case 16: return sliceit(SLICES.please_check_the_number_and_dial_again);
+    case 17: return sliceit(SLICES.the_number_dialed);
+    case 18: return sliceit(SLICES.the_new_number_is);
+    case 19: return sliceit(SLICES.enter_function);
+    case 20: return sliceit(SLICES.please_enter);
+    case 21: return sliceit(SLICES.area_code);
+    case 22: return sliceit(SLICES.new_number);
+    case 23: return sliceit(SLICES.invalid);
+    case 24: return sliceit(SLICES.not_available);
+    case 25: return sliceit(SLICES.enter_service_code);
+    case 26: return sliceit(SLICES.deleted);
+    case 27: return sliceit(SLICES.category);
+    case 28: return sliceit(SLICES.date);
+    case 29: return sliceit(SLICES.re_enter);
+    case 30: return sliceit(SLICES.thank_you);
+    case 31: return sliceit(SLICES.or_dial_directory_assistance);
+    default: return false;
+  }
+}
+
+bool testMp3file(String starcode){
+  //NOTE: managing the success tone and mode switch directly so we can get the timing right
+  auto play = [](String filepath, unsigned milliseconds)-> bool {
+    Serial.printf("testing MP3 playback [%s]...", filepath.c_str());
+    player.playMP3(filepath);
+    wait(milliseconds + 800); // attempting to delay exactly the right amount of time before switching mode, but abort if user hangs up
+    return true;
+  };
+  switch(starcode[2]){
+    case '1': return play("/fs/circuits-xxx-anna.mp3",        7706);
+    case '2': return play("/fs/complete2-bell-f1.mp3",        8856);
+    case '3': return play("/fs/discoornis-bell-f1.mp3",       10109);
+    case '4': return play("/fs/timeout-bell-f1.mp3",          7367);
+    case '5': return play("/fs/svcoroption-xxx-anna.mp3",     12434);
+    case '6': return play("/fs/anna-1DSS-default-vocab.mp3",  26776);
+    case '7': return play("/fs/feature5-xxx-anna.mp3",        1881);
+    case '8': return play("/fs/feature6-xxx-anna.mp3",        1802);
+    default: return false;
+  }
+}
+

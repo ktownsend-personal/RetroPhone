@@ -27,8 +27,32 @@ void wifiHandler::showNetworks(){
     Serial.printf(" %d networks found:\n", n);
     for (int i = 0; i < n; ++i) {
       // Print SSID and RSSI for each network found
-      Serial.printf("%d: %s (%d)%s\n", i+1, WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "" : "*");
+      Serial.printf("\t%d: %s (%d)%s\n", i+1, WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "" : "*");
       delay(10);
     }
   }
+}
+
+String status(){
+  switch(WiFi.status()){
+    case WL_CONNECTED:        return "Connected";
+    case WL_CONNECT_FAILED:   return "Connect Failed";
+    case WL_CONNECTION_LOST:  return "Connection Lost";
+    case WL_DISCONNECTED:     return "Disconnected";
+    case WL_IDLE_STATUS:      return "Idle";
+    case WL_NO_SHIELD:        return "No Shield";
+    case WL_NO_SSID_AVAIL:    return "No SSID Available";
+    case WL_SCAN_COMPLETED:   return "Scan Completed";
+  }
+}
+
+void wifiHandler::showStatus(){
+  Serial.printf("\n\n\tHostname: %s\n", WiFi.getHostname());
+  Serial.printf("\tIP: %s\n", WiFi.localIP().toString().c_str());
+  Serial.printf("\tDNS: %s\n", WiFi.dnsIP().toString().c_str());
+  Serial.printf("\tGateway: %s\n", WiFi.gatewayIP().toString().c_str());
+  Serial.printf("\tSSID: %s\n", WiFi.SSID().c_str());
+  Serial.printf("\tRSSI: %d, TX Power: %d\n", WiFi.RSSI(), WiFi.getTxPower());
+  Serial.printf("\tMode: %d, Channel: %d\n", WiFi.getMode(), WiFi.channel());
+  Serial.printf("\tStatus: %s\n", status().c_str());
 }
