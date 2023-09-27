@@ -59,13 +59,19 @@
 * \*531: &rarr; or dial directory assistance
 
 ## \*6*x* - WiFi network
-* \*60 &rarr; TODO: show current network status on serial console
+* \*60 &rarr; show current network status on serial console
 * \*61 &rarr; list available networks to serial console
 
 ## \*7*x* - console input mode
 * \*71 &rarr; start console mode
 * commands:
+  * help &rarr; show list of commands
   * exit &rarr; use exit command or reset button to return to phone mode
-  * networks &rarr; list available networks
-  * test &rarr; confirms receipt of test command
+  * network status &rarr; show current status of wifi connection
+  * network list &rarr; list available wifi networks
+  * region na &rarr; set region to North America
+  * region uk &rarr; set region to United Kingdom
+  * dtmf software &rarr; enable software DTMF decoder
+  * dtmf hardware &rarr; enable hardware DTMF decoder module
+  * dtmf module speed test &rarr; run speed test for DTMF module
   

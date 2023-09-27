@@ -19,11 +19,10 @@ This is the heart of the operation. Essentially a state machine, which I have sp
 ### Loop Flow
 I organized the loop flow as follows:
 1. run current mode
-2. switch to a deferred mode if time elapsed
-3. run a deferred action if time elapsed
-4. check inputs for mode change
-6. if mode change from inputs:
-    1. if not bouncing, switch to it
+1. switch to a deferred mode if time elapsed
+1. run a deferred action if time elapsed
+1. check inputs for mode change
+    * switch to new mode after it stops bouncing
 
 ### Run Current Mode
 `modeRun(mode)`
@@ -76,3 +75,6 @@ The [lib/ringHandler](../lib/ringHandler/) handles ringing the bell when there i
 
 ### Regional Sounds
 The [lib/regionConfig](../lib/regionConfig/) library encapsulates the various settings for frequencies and cadences for call progress tones and bell ringing. We currently have configurations for North America and United Kingdom.
+
+### WiFi
+The [lib/wifiHandler](../lib/wifiHandler/) library is where I'm putting my comms. I am also using the [WiFiManager](https://github.com/tzapu/WiFiManager) library for setting up the initial wifi connection using AP mode and a config web page and automatically connecting to it at startup.

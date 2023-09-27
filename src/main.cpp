@@ -25,7 +25,7 @@ auto player  = audioPlayback(region, 0); // core 0 better; core 1 delays mp3 pla
 auto status  = statusHandler<PIN_RGB>(100);
 auto comms   = wifiHandler();
 
-WiFiManager wm;
+WiFiManager wm; // https://github.com/tzapu/WiFiManager
 bool connected = false;
 
 void setup() {

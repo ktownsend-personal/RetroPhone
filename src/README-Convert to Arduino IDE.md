@@ -1,9 +1,10 @@
 ### Converting from PlatformIO to Arduino IDE:
-1. make `main` folder in your Arduino IDE project folder
+1. create `main` folder in your Arduino IDE project folder
 1. copy `partitions.csv` file and `src`, `lib` and `data` folders from PlatformIO project into `main`
 1. flatten all code files from `src` and `lib` into `main` folder, then delete those folders
 1. rename `main.cpp` as `main.ino`
-1. make sure all files use quotes around #include targets instead of angle brackets 
+1. update `config.h` with your ESP32 pin settings
+1. ensure all files use quotes around #include targets instead of angle brackets 
     * I've already done that in this project, but useful to know about
     * technically Arduino IDE requires the local libraries to use quotes and the built-in libraries can use angle brackets, but all using quotes works fine
 1. import any external libraries you need (i.e., FastLED, Preferences.h, etc.)

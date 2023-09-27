@@ -1,3 +1,5 @@
+# audioPlayback
+
 I created this library based on files I found [here](https://github.com/atomic14/esp32-play-mp3-demo), which also use the `audio_output` and `minimp3` libraries. I have evolved it quite a bit, but that was a great starting point.
 
 I really like the FreeRTOS task approach I found in the original example, which works out much better for this project than Mozzi's loop approach. In particular, Mozzi and PhoneDTMF can't operate together in the same loop due to how much time PhoneDTMF requires to listen to the ADC. With the task approach we have the ability to choose either core to run on and it doesn't interfere with the main program loop. 
@@ -12,8 +14,9 @@ I really like the FreeRTOS task approach I found in the original example, which 
 * notification mechanism back to main loop that a playback is finished to improve coordination of modes
 
 ## NOTES
-* tone generation requires a minimum of 1ms per chunk for smooth audio, which is 33 chunks for audio rate of 32768Hz
-  * Hz * seconds = chunk size
-  * larger chunks may be needed if code processing timings change
-  * keeping this small resoves the issue I had with still hearing a blip of dialtone when dialing "1" as first digit
-* mp3 handler chunks at 26.122ms: 576@22050Hz, 1152@44100Hz
+* we need to balance the smallest chunk size we can get away with for generating tones
+  * as small as possible so dialtone can cancel ASAP, but long enough to avoid audio glitches when the CPU is working on other stuff
+    > The less we have in the buffer the less there is remaining to play when we cancel the dialtone. This is critical to avoid hearing a blip of dialtone after pulse dialing "1" because it's so short. 
+  * the shortest chunk I was able to get working was 33 samples (1ms at 32768Hz), but I had to increase to 50 samples later due to CPU activity; this may require future adjustment as we start getting into WiFi comms
+  * `Hz * seconds = chunk size` &rarr; example: 32768Hz * 0.001s = 33 samples
+  * for comparison, mp3 handler chunks at 26.122ms: 576@22050Hz, 1152@44100Hz

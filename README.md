@@ -44,17 +44,15 @@ There is a lot of info in this README, but also some useful stuff in the [docs f
 * real call progress tones and system messages
   * configurable for North America or United Kingdom sounds
   * mp3 playback for system messages
-  * playback sequencing of tones and slices of mp3 files to build a full message (like reading out the number you dialed during `not in service` error message)
+  * playback sequencing of tones and slices of mp3 files to build a full message, like reading out the number you dialed during `not in service` error message
 * tone and pulse dialing
 * configuration by dialing star-codes (or 22 instead of * when pulse dialing)
 * dialing any 7-digit number will play appropriate audio for ring, busy or error depending on first digit (temporary demo until I have calls working between devices)
-* RGB LED for status colors & patterns representing all of the call states
+* RGB LED for status colors & patterns representing call states
 
 ## Next Steps
 * add filter to block 20Hz ring signal from SLIC's audio out line (mostly to keep it off my external speaker when it's ringing)
 * trunk line via wifi, or wired if wifi affects audio quality
-  * could switch to PiZeroW or something if simultaneious ADC/DAC/Wifi is too much for ESP32
-  * might be an option to design these modules for a backplane in a single housing and just use wiring between the modules for analog audio (think of it like a local switching office)
 
 ## Challenges
 * high voltage ring signal overlaps going off-hook slightly
@@ -81,17 +79,15 @@ There is a lot of info in this README, but also some useful stuff in the [docs f
 ## Notable
 * SHK pin from SLIC bounces a lot, so it requires debounce logic. 
   * GadgetReboot noticed it bounces longer when powered 3.3V vs. 5V
-* RM and FR pins on the SLIC are both necessary for ringing. The RM pin sets the higher ringing voltage, and the FR pin flip flops the polarity on high and low cycles. Both are definitely needed, although the electronic ringer on my Sony slimline works fine with just FR toggled, the physical bell on the Snoopy phone requires the RM to have enough power to physically move the armature. The FR pin should be toggled at 50% duty cycle at 20Hz with cadence 2s-on/4s-off for US ring.
-* When using PhoneDTMF library, we seem to need 300 sample count and 6000 frequency to avoid detection dropouts while a button is pressed (which causes repeated numbers)
-  * I tried 50ms debounce and still got gaps, and since 50ms tone and 50ms space are the standard that I saw someplace we probably shouldn't debounce longer
-  * Update: I have since found a bug in my coordination of PhoneDTMF that resolved the debounce issue without needing a debounce.
+* RM and FR pins on the SLIC are both necessary for ringing. The RM pin sets the higher ringing voltage, and the FR pin flip flops the polarity on high and low cycles. Both are definitely needed, although the electronic ringer on my Sony slimline works fine with just FR toggled, the physical bell on the Snoopy phone requires the RM to have enough power to physically move the armature. 
+
 * The [missing fundamental](https://blogs.scientificamerican.com/roots-of-unity/your-telephone-is-lying-to-you-about-sounds/) phenomenon is really interesting. Although phones only use frequencies 300Hz to 3400Hz, we actually hear lower tones due to this phenomenon.
 
 ## Thoughts
 * would interrupts be useful in this project so we can put the device to sleep when idle, but still wake up for incoming wifi call or off-hook pin?
 * special response for 911 dialing to clearly say it's not a real phone and cannot be used for emergencies
-* digitizing settings can be fairly low because a real phone system caps the upper frequency at 3400 Hz
-* could use an IO pin to control power to the hardware DTMF decoder and level shifter to reduce power consumption, but only if I want to run on a battery
+* digitizing bitrate can be fairly low because a real phone system caps the upper frequency at 3400 Hz
+* could use an IO pin to control power to the hardware DTMF decoder and level shifter to reduce power consumption, but only necessary if I want to run on a battery
 * PhoneDTMF software decoding might run better as a FreeRTOS task... needs experimentation
 * the DAC has left and right outputs, but since this project is mono we could use the same DAC to generate two independent mono signals if we get fancy with our audio generation loop; I don't have a scenario where that would be useful yet, but it's a cool idea
 
@@ -101,7 +97,7 @@ Although I'm a seasoned software engineer, I'm new to C++ so I've got some notes
 * `Serial.printf("..%s..", stringvar.c_str())` to print `String` type with printf because `%s` epxects C style string not `String` object and will garble the value or even crash the app
 * passing arrays to functions, [good explanation](https://stackoverflow.com/a/19894884/8228356)
 
-  In a nutshell, arg is simple pointer and you pass array directly when calling, but really a pointer to first array value is passed and in the func you can access array values by index like normal...but you can't know the length and must pass that value separately.
+  In a nutshell, arg is simple pointer and you pass array directly when calling, but really a pointer to first array value is passed and in the func you can access array values by index like normal...but you can't infer the length and must pass that value separately.
 
 ## Hardware
 * [KS0835F SLIC module](https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqbEtxcHQ2MnVEQ3c2ZXVjNHRtZW82Tk1JSS1UUXxBQ3Jtc0ttV0g1ZlFleXBXV0JRbVJTbldEbW12X2JVQ0ZJcEJ0NG44ck94cUtmeEowY2xuNi1QSEQwbzFzYmo1cDdGLTFWNHR4QmpVbS0yNlRvdWFYeEN4b3JUcnFYZnN3SWkwUGRmSmI4UDNFSDE3R1Rlb0Iycw&q=https%3A%2F%2Fs.click.aliexpress.com%2Fe%2F_DFeMKoP&v=qM0ZhSyA6Jw) (AG1171/AG1170 clone)
