@@ -32,6 +32,8 @@ void setup() {
   Serial.begin(115200);
   Serial.println();
 
+  // used this website to generate text art: https://patorjk.com/software/taag/#p=testall&f=Trek&t=RetroPhone%20
+
   // Serial.println(" -------------------------------------------------- ");
   // Serial.println("|          ╦═╗┌─┐┌┬┐┬─┐┌─┐╔═╗┬ ┬┌─┐┌┐┌┌─┐          |");
   // Serial.println("|          ╠╦╝├┤  │ ├┬┘│ │╠═╝├─┤│ ││││├┤           |");
