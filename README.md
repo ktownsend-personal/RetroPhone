@@ -1,5 +1,11 @@
-# RetroPhone
+<pre style="line-height:1 !important; font: 12px courier new, sans-serif;background-color:lightgray">
+  ____      _             ____  _                       
+ |  _ \ ___| |_ _ __ ___ |  _ \| |__   ___  _ __   ___  
+ | |_) / _ \ __| '__/ _ \| |_) | '_ \ / _ \| '_ \ / _ \ 
+ |  _ <  __/ |_| | | (_) |  __/| | | | (_) | | | |  __/ 
+ |_| \_\___|\__|_|  \___/|_|   |_| |_|\___/|_| |_|\___| 
 
+</pre>
 >*Work-in-progress*
 
 Free for anyone to copy from. I live by the motto "inspire, not require" as much as I can.
