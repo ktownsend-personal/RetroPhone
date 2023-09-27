@@ -1,4 +1,4 @@
-<pre style="line-height:1 !important; font: 12px courier new, sans-serif;background-color:lightgray">
+<pre style="line-height:0.8 !important; font: 12px courier new, sans-serif;background-color:lightgray">
   ____      _             ____  _                       
  |  _ \ ___| |_ _ __ ___ |  _ \| |__   ___  _ __   ___  
  | |_) / _ \ __| '__/ _ \| |_) | '_ \ / _ \| '_ \ / _ \ 
