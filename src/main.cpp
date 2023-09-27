@@ -31,7 +31,25 @@ bool connected = false;
 void setup() {
   Serial.begin(115200);
   Serial.println();
-  Serial.println("RetroPhone, by Keith Townsend");
+
+  // Serial.println(" -------------------------------------------------- ");
+  // Serial.println("|          ╦═╗┌─┐┌┬┐┬─┐┌─┐╔═╗┬ ┬┌─┐┌┐┌┌─┐          |");
+  // Serial.println("|          ╠╦╝├┤  │ ├┬┘│ │╠═╝├─┤│ ││││├┤           |");
+  // Serial.println("|          ╩╚═└─┘ ┴ ┴└─└─┘╩  ┴ ┴└─┘┘└┘└─┘          |");
+  // Serial.println("|               2023, Keith Townsend               |");
+  // Serial.println("| https://github.com/ktownsend-personal/RetroPhone |");
+  // Serial.println(" -------------------------------------------------- ");
+
+  Serial.println(R"( ---------------------------------------------------------------------------- )");
+  Serial.println(R"(| __________        __               __________.__                           |)");
+  Serial.println(R"(| \______   \ _____/  |________  ____\______   \  |__   ____   ____   ____   |)");
+  Serial.println(R"(|  |       _// __ \   __\_  __ \/  _ \|     ___/  |  \ /  _ \ /    \_/ __ \  |)");
+  Serial.println(R"(|  |    |   \  ___/|  |  |  | \(  <_> )    |   |   Y  (  <_> )   |  \  ___/  |)");
+  Serial.println(R"(|  |____|_  /\___  >__|  |__|   \____/|____|   |___|  /\____/|___|  /\___  > |)");
+  Serial.println(R"(|         \/     \/                                 \/            \/     \/  |)");
+  Serial.println(R"(|                            2023, Keith Townsend                            |)");
+  Serial.println(R"(|              https://github.com/ktownsend-personal/RetroPhone              |)");
+  Serial.println(R"( ---------------------------------------------------------------------------- )");
 
   pinMode(PIN_LED, OUTPUT);
   pinMode(PIN_BTN, INPUT_PULLDOWN);
@@ -39,6 +57,7 @@ void setup() {
 
   settingsInit();
   if(!softwareDTMF && detectMT870) existsDTMF_module();
+  Serial.println();
 
   ringer.init(PIN_RM, PIN_FR, CH_FR);
   ringer.setCounterCallback(ringCountCallback);
@@ -54,6 +73,7 @@ void setup() {
   auto id = String("RetroPhone_") + String(ESP.getEfuseMac());
   connected = wm.autoConnect(id.c_str());
   Serial.println(connected ? "WiFi connected" : "WiFi config portal running for 60 seconds");
+  Serial.println();
 
   modeStart(mode); // set initial mode
 }
@@ -98,7 +118,7 @@ bool testDTMF_module(String digits, int toneTime, int spaceTime, bool showSend, 
   // My testing shows min toneTime 33 and min spaceTime 19, but min combo time between 54 and 66 depending on combination.
   String reads;
   bool checked = false;
-  if(showSend) Serial.printf("\tTesting DTMF module: %s", digits.c_str());
+  if(showSend) Serial.printf("-->\tTesting DTMF module: %s", digits.c_str());
   auto until = millis() + ((toneTime+spaceTime)*digits.length()) + 500;
   player.playDTMF(digits, toneTime, spaceTime);
   while(millis() < until){
@@ -136,11 +156,11 @@ bool testDTMF_module(String digits, int toneTime, int spaceTime, bool showSend, 
 void settingsInit(){
   delay(50);  // this delay resolved a timing issue accessing Preferences.h, but not sure what the timing issue actually is (filesystem not ready yet, or some other activity?)
   softwareDTMF = prefs.getDTMF();
-  Serial.printf("\tUsing %s DTMF detection. Dial *20 for hardware, *21 for software.\n", softwareDTMF ? "software" : "hardware");
+  Serial.printf("-->\tUsing %s DTMF detection. Dial *20 for hardware, *21 for software.\n", softwareDTMF ? "software" : "hardware");
   regions r = (regions)prefs.getRegion();
   region = RegionConfig(r);
   player.changeRegion(region);
-  Serial.printf("\tUsing %s sounds and ring style. Dial *11 for North America, *12 for United Kingdom.\n", region.label.c_str());
+  Serial.printf("-->\tUsing %s sounds and ring style. Dial *11 for North America, *12 for United Kingdom.\n", region.label.c_str());
 }
 
 void loop() {
@@ -209,7 +229,7 @@ void modeStop(modes oldmode) {
 }
 
 void modeStart(modes newmode) {
-  Serial.printf("%s...", modeNames[newmode].c_str());
+  Serial.printf("> %s...", modeNames[newmode].c_str());
 
   digitalWrite(PIN_LED, digitalRead(PIN_SHK)); // basic off-hook status; might expand later with addressable RGB
   status.show(newmode);
