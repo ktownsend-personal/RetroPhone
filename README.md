@@ -114,6 +114,7 @@ Although I'm a seasoned software engineer, I'm new to C++ so I've got some notes
 * [FastLED](https://github.com/FastLED/FastLED) to run the addressable RGB LED
 * [ESP32 MP3 Player](https://github.com/atomic14/esp32-play-mp3-demo) to play mp3 system messages and call progress tones (heavily modified)
 * [minimp3.h](https://github.com/lieff/minimp3) to decode mp3 files
+* [WiFiManager](https://github.com/tzapu/WiFiManager) for captive portal WiFi config and auto-connect
 
 ## Call Progress Modes
 I made this chart to help me track what transitional modes I should implement and what is active during each mode. Work in progress and likely to change as I get deeper into it and discover which assumptions aren't correct. 
