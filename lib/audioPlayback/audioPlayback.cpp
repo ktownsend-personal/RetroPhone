@@ -30,10 +30,6 @@
 //SOLVED: popping between howler segments was resolved by setting phase to 0 on the oscillators before starting the segment so the silence segments aren't flatlining whatever the last sample was
 //SOLVED: the extra blip of dialtone when hanging up appears to be happening in the SLIC and is only noticeable because we are playing SLIC output on external speaker
 
-//TODO: implement a way to notify main loop that a sequence is done playing
-//        maybe an anonymous callback function provided when starting playback so we can do specific things as needed, but threadsafe? Maybe just a flag the loop can watch?
-//        maybe enhance wait(ms) in main.cpp to be more of a defer(ms, callback) that blocks until mode change or audio completion (should mode change abort callback?)
-
 const int BUFFER_SIZE = 1024;
 byte core;
 TaskHandle_t x_handle = NULL;
@@ -126,6 +122,12 @@ void audioPlayback::queuePlaybackDef(playbackDef def){
   pq->defs[index]= def;
 }
 
+void audioPlayback::queueCallback(void (*callback)()){
+  //NOTE: if using this in the middle of playback to change mode, pass true for 2nd arg of modeGo() to avoid stopping playback
+  auto def = playbackDef{callback, 0, 0, 0, 0, 0, "", 0, 0, 0, 1};
+  queuePlaybackDef(def);
+}
+
 // add silence gap
 void audioPlayback::queueGap(unsigned spaceTime){
   queueTone(spaceTime, 0, 0, 0, 0);
@@ -133,13 +135,21 @@ void audioPlayback::queueGap(unsigned spaceTime){
 
 // add multifreq tone
 void audioPlayback::queueTone(unsigned toneTime, unsigned short freq1, unsigned short freq2, unsigned short freq3, unsigned short freq4){
-  auto def = playbackDef{toneTime, freq1, freq2, freq3, freq4, "", 0, 0, 0, 1};
+  auto def = playbackDef{NULL, toneTime, freq1, freq2, freq3, freq4, "", 0, 0, 0, 1};
   queuePlaybackDef(def);
 }
 
-// add mp3
-void audioPlayback::queueMP3(String filepath, unsigned long offsetBytes, unsigned long samplesToPlay){
-  auto def = playbackDef{0, 0, 0, 0, 0, filepath, offsetBytes, samplesToPlay, 0, 1};
+// add mp3 file
+void audioPlayback::queueMP3(String filepath, byte iterations, unsigned gapMS){
+  auto def = playbackDef{NULL, 0, 0, 0, 0, 0, filepath, 0, 0, 0, 1};
+  queuePlaybackDef(def);
+  queueGap(gapMS);
+  queuePlaybackDef(def);
+}
+
+// add mp3 slice
+void audioPlayback::queueMP3Slice(String filepath, unsigned long offsetBytes, unsigned long samplesToPlay){
+  auto def = playbackDef{NULL, 0, 0, 0, 0, 0, filepath, offsetBytes, samplesToPlay, 0, 1};
   queuePlaybackDef(def);
 }
 
@@ -191,7 +201,7 @@ void audioPlayback::queueDTMF(char digit, unsigned toneTime){
 }
 
 // add appropriate segments for the specified tone type and time
-void audioPlayback::queueTone(tones tone, byte iterations){
+void audioPlayback::queueTone(tones tone, unsigned iterations){
   switch(tone){
     case dialtone:  return queueToneConfig(currentRegion.dialtone, iterations);
     case ringback:  return queueToneConfig(currentRegion.ringback, iterations);
@@ -204,7 +214,7 @@ void audioPlayback::queueTone(tones tone, byte iterations){
 }
 
 // convert ToneConfig to segments
-void audioPlayback::queueToneConfig(ToneConfig tc, byte iterations) {
+void audioPlayback::queueToneConfig(ToneConfig tc, unsigned iterations) {
 
   // NOTE: first index of tc.cadence[] and tc.freqs[] is the count of elements following
   // NOTE: when cadence count is zero then freqs are played forever (no cadence)
@@ -231,13 +241,13 @@ void audioPlayback::queueToneConfig(ToneConfig tc, byte iterations) {
   }
 
   if(iterations != 1) {
-    auto def = playbackDef{0, 0, 0, 0, 0, "", 0, 0, repeatIndex, iterations};
+    auto def = playbackDef{NULL, 0, 0, 0, 0, 0, "", 0, 0, repeatIndex, iterations};
     queuePlaybackDef(def);
   }
 }
 
 void audioPlayback::queueSlice(sliceConfig slice){
-  queueMP3(slice.filename, slice.byteOffset, slice.samplesToPlay);
+  queueMP3Slice(slice.filename, slice.byteOffset, slice.samplesToPlay);
 }
 
 void audioPlayback::queueNumber(String digits, unsigned spaceTime){
@@ -304,7 +314,7 @@ void audioPlayback::playDTMF(String digits, unsigned toneTime, unsigned spaceTim
 
 // plays the MP3 file as a task
 void audioPlayback::playMP3(String filepath, byte iterations, unsigned gapMS, unsigned long offsetBytes, unsigned long samplesToPlay){
-  queueMP3(filepath, offsetBytes, samplesToPlay);
+  queueMP3Slice(filepath, offsetBytes, samplesToPlay);
   play(iterations, gapMS);
 }
 
@@ -325,7 +335,9 @@ void playback_task(void *arg){
       if(queue->stopping) break;                                // abort if task is stopping
       if(debug) Serial.print(".");
       auto def = queue->defs[idx];
-      if(def.repeatTimes != 1) {                                // check repeater
+      if(def.callback != NULL) {
+        def.callback();                                         // do the callback
+      } else if(def.repeatTimes != 1) {                         // check repeater
         queue->defs[idx].repeatTimes -= 1;                      // decrement remaining repeats before changing idx
         idx = def.repeatIndex - 1;                              // go back to starting def of repeat sequence
         if(debug) Serial.printf("Repeat %d times from index %d\n", def.repeatTimes, def.repeatIndex);

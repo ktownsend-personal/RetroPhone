@@ -6,6 +6,8 @@
 #include "audioSlices.h"
 
 struct playbackDef {
+  //-------callback-------//
+  void (*callback)();
   //---------tone---------//
   unsigned int duration;        // 0 = forever, otherwise milliseconds
   unsigned short freq1;
@@ -18,7 +20,7 @@ struct playbackDef {
   unsigned long samplesToPlay;  // 0 = until end
   //--------repeat--------//
   short repeatIndex;            // any preceding index in the queue
-  byte repeatTimes;             // 0 = forever, otherwise exact number of times
+  unsigned repeatTimes;         // 0 = forever, otherwise exact number of times
 };
 
 struct playbackQueue {
@@ -59,10 +61,10 @@ class audioPlayback
     ~audioPlayback();
 
     void changeRegion(RegionConfig region);
-
+    void queueCallback(void (*callback)());
     void queueGap(unsigned spaceTime);
-    void queueMP3(String filepath, unsigned long offsetBytes = 0, unsigned long samplesToPlay = 0);
-    void queueTone(tones tone, byte iterations = 0);
+    void queueMP3(String filepath, byte iterations = 1, unsigned gapMS = 0);
+    void queueTone(tones tone, unsigned iterations = 0);
     void queueTone(unsigned toneTime, unsigned short freq1, unsigned short freq2, unsigned short freq3, unsigned short freq4);
     void queueDTMF(String digits, unsigned toneTime = 40, unsigned spaceTime = 40);
     void queueSlice(sliceConfig slice);
@@ -79,7 +81,8 @@ class audioPlayback
   private:
     playbackQueue *pq;
     void queueDTMF(char digit, unsigned toneTime);
-    void queueToneConfig(ToneConfig tc, byte iterations);
+    void queueMP3Slice(String filepath, unsigned long offsetBytes = 0, unsigned long samplesToPlay = 0);
+    void queueToneConfig(ToneConfig tc, unsigned iterations);
     void queuePlaybackDef(playbackDef def);
 };
 

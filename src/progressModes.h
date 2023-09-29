@@ -14,8 +14,7 @@ enum modes {
   call_ringing,       // play ringback tone
   call_connected,     // establish two-way live audio between phones
   call_disconnected,  // detect end of call and start timeout
-  call_timeout1,      // play "cannot be completed as dialed" message
-  call_timeout2,      // play howler
+  call_timeout,       // play helpful message and howler, then mode change to abandon
   call_abandoned,     // silence; we gave up alerting user (maybe go into low power mode?)
   call_incoming,      // physical ringer
   call_operator,      // simulate calling the operator
@@ -33,9 +32,8 @@ String modeNames[16] = {  // best way I found to translate modes to names for ou
   "destination ringing",
   "call connected",
   "call disconnected",
-  "helpful message",
-  "attention, off-hook",
-  "call abandoned",
+  "user timeout",
+  "user abandoned",
   "incoming call",
   "calling operator",
   "configuring"

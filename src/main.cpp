@@ -43,10 +43,10 @@ void setup() {
   pulser.setDigitCallback(digitReceivedCallback);
   dtmfer.setDigitCallback(digitReceivedCallback);
   dtmfmod.setDigitCallback(digitReceivedCallback);
-  comms.init();     // WIFI auto-connect & config portal
+  comms.init();           // WIFI auto-connect & config portal
   Serial.println();
 
-  modeStart(mode);  // activate initial call progress mode
+  modeStart(mode, mode);  // activate initial call progress mode
 }
 
 void splash(){
@@ -212,21 +212,21 @@ modes modeDetect() {
   return mode; // if we get here the mode didn't change
 }
 
-void modeStop(modes oldmode) {
+void modeStop(modes oldmode, bool keepPlaybackAlive) {
   Serial.println();     // end the active mode line
   deferModeUntil = 0;   // cancel scheduled mode change
   deferActionUntil = 0; // cancel scheduled action
   switch(oldmode){
     case call_incoming: return ringer.stop();
-    default:            return player.stop();
+    default:            return keepPlaybackAlive ? void() : player.stop();
   }
 }
 
-void modeStart(modes newmode) {
+void modeStart(modes newmode, modes oldmode) {
   Serial.printf("> %s...", modeNames[newmode].c_str());
 
-  digitalWrite(PIN_LED, digitalRead(PIN_SHK)); // basic off-hook status; might expand later with addressable RGB
-  status.show(newmode);
+  digitalWrite(PIN_LED, digitalRead(PIN_SHK)); // basic off-hook status
+  status.show(newmode);                        // addressable LED for mode status
 
   switch(newmode){
     case call_ready:
@@ -244,19 +244,19 @@ void modeStart(modes newmode) {
         case 2: return modeGo(call_fail);
       }
       return;
-    case call_timeout1:
-      switch(previousMode){
-        case call_tone_dialing:
-        case call_pulse_dialing: return player.playMP3("/fs/complete2-bell-f1.mp3", 2, 2000);
+    case call_timeout:
+      switch(oldmode){
+        case call_ready:          return playTimeoutMessage("/fs/timeout-bell-f1.mp3");
+        case call_pulse_dialing:  return playTimeoutMessage("/fs/complete2-bell-f1.mp3");
+        case call_tone_dialing:   return playTimeoutMessage("/fs/complete2-bell-f1.mp3");
       }
-      return player.playMP3("/fs/timeout-bell-f1.mp3", 2, 2000);
-    case call_timeout2:       return player.playTone(player.howler);
+      return;
     case call_incoming:       return ringer.start(region.ringer.freq, region.ringer.cadence);
     case call_pulse_dialing:  return timeoutStart();
     case call_tone_dialing:   return timeoutStart();
     case call_ringing:        return player.playTone(player.ringback);
     case call_busy:           return player.playTone(player.busytone);
-    case call_fail:           return callFailed();
+    case call_fail:           return playCallFailed();
     case system_config:       return configureByNumber(digits);
     case call_operator:       return; //TODO: handle operator simulation
     case call_abandoned:      return;
@@ -271,36 +271,24 @@ void modeRun(modes mode){
       return ringer.run();
     case call_ready:
       pulser.run();
-      timeoutCheck();
       return (softwareDTMF) ? dtmfer.run() : dtmfmod.run();
     case call_pulse_dialing:
-      pulser.run();
-      return timeoutCheck();
+      return pulser.run();
     case call_tone_dialing:
-      timeoutCheck();
       return (softwareDTMF) ? dtmfer.run() : dtmfmod.run();
-    case call_timeout1:
-    case call_timeout2:
-      return timeoutCheck();
   }
 }
 
-void modeGo(modes newmode){
-  modeStop(mode);
-  previousMode = mode;
+void modeGo(modes newmode, bool keepPlaybackAlive){
+  if(mode == newmode) return;
+  auto oldmode = mode;
+  modeStop(oldmode, keepPlaybackAlive);
   mode = newmode;
-  modeStart(newmode);
+  modeStart(newmode, oldmode);
 }
 
 void timeoutStart(){
-  timeoutStarted = millis();
-}
-
-void timeoutCheck(){
-  unsigned int since = (millis() - timeoutStarted);
-  if(since > abandonMax) return (mode == call_abandoned) ? void() : modeGo(call_abandoned); // check by longest max first
-  if(since > timeout2Max) return (mode == call_timeout2) ? void() : modeGo(call_timeout2);  
-  if(since > timeout1Max) return (mode == call_timeout1) ? void() : modeGo(call_timeout1);
+  modeDefer(call_timeout, timeoutMax);
 }
 
 // callback from ringer class so we can show ring counts in the serial output
@@ -442,7 +430,7 @@ void configureByNumber(String starcode){
   err();  // if we get here the starcode wasn't handled
 }
 
-void callFailed(){
+void playCallFailed(){
   player.queueGap(1000);
   player.queueInfoTones(player.low_short, player.low_short, player.low_long); // number changed or disconnected
   player.queueSlice(SLICES.the_number_you_have_dialed);
@@ -452,6 +440,15 @@ void callFailed(){
   player.queueSlice(SLICES.this_is_a_recording);
   player.queueGap(2000);
   player.queueTone(player.reorder);
+  player.play();
+}
+
+void playTimeoutMessage(String mp3){
+  player.queueMP3(mp3, 2, 2000);
+  player.queueGap(5000);
+  player.queueCallback([]()->void{Serial.print("attention!");});
+  player.queueTone(player.howler, 300); // 300 iterations * 200ms cadence = 60 seconds
+  player.queueCallback([]()->void{modeGo(call_abandoned);});
   player.play();
 }
 
