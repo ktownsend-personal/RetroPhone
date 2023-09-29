@@ -12,7 +12,6 @@
 #include "audioSlices.h"
 #include "statusHandler.h"
 #include "wifiHandler.h"
-#include "WiFiManager.h"  // https://github.com/tzapu/WiFiManager
 
 String digits; // this is where we accumulate dialed digits
 auto region  = RegionConfig(region_northAmerica);
@@ -25,13 +24,32 @@ auto player  = audioPlayback(region, 0); // core 0 better; core 1 delays mp3 pla
 auto status  = statusHandler<PIN_RGB>(100);
 auto comms   = wifiHandler();
 
-WiFiManager wm; // https://github.com/tzapu/WiFiManager
-bool connected = false;
-
 void setup() {
   Serial.begin(115200);
   Serial.println();
 
+  pinMode(PIN_LED, OUTPUT);
+  pinMode(PIN_BTN, INPUT_PULLDOWN);
+  pinMode(PIN_SHK, INPUT_PULLUP);
+
+  splash();
+  settingsInit();
+  if(!softwareDTMF && detectMT870) moduleDTMF_exists();
+  Serial.println();
+
+  ringer.init(PIN_RM, PIN_FR, CH_FR);
+  ringer.setCounterCallback(ringCountCallback);
+  pulser.setMaybeCallback(maybeDialingStartedCallback);
+  pulser.setDigitCallback(digitReceivedCallback);
+  dtmfer.setDigitCallback(digitReceivedCallback);
+  dtmfmod.setDigitCallback(digitReceivedCallback);
+  comms.init();     // WIFI auto-connect & config portal
+  Serial.println();
+
+  modeStart(mode);  // activate initial call progress mode
+}
+
+void splash(){
   // used this website to generate text art: https://patorjk.com/software/taag/#p=testall&f=Trek&t=RetroPhone%20
 
   // Serial.println(" -------------------------------------------------- ");
@@ -52,32 +70,6 @@ void setup() {
   Serial.println(R"(│                            2023, Keith Townsend                            │)");
   Serial.println(R"(│              https://github.com/ktownsend-personal/RetroPhone              │)");
   Serial.println(R"(╰────────────────────────────────────────────────────────────────────────────╯)");
-
-  pinMode(PIN_LED, OUTPUT);
-  pinMode(PIN_BTN, INPUT_PULLDOWN);
-  pinMode(PIN_SHK, INPUT_PULLUP);
-
-  settingsInit();
-  if(!softwareDTMF && detectMT870) existsDTMF_module();
-  Serial.println();
-
-  ringer.init(PIN_RM, PIN_FR, CH_FR);
-  ringer.setCounterCallback(ringCountCallback);
-  pulser.setMaybeCallback(maybeDialingStartedCallback);
-  pulser.setDigitCallback(digitReceivedCallback);
-  dtmfer.setDigitCallback(digitReceivedCallback);
-  dtmfmod.setDigitCallback(digitReceivedCallback);
-  comms.init();
-
-  // WIFI auto-connect & config portal
-  wm.setConfigPortalBlocking(false);
-  wm.setConfigPortalTimeout(60);
-  auto id = String("RetroPhone_") + String(ESP.getEfuseMac());
-  connected = wm.autoConnect(id.c_str());
-  if(!connected) Serial.println("WiFi config portal running for 60 seconds");
-  Serial.println();
-
-  modeStart(mode); // activate initial call progress mode
 }
 
 // this will wait (blocking) the number of milliseconds specified, or until user hangs up
@@ -101,9 +93,9 @@ void deferActionCheckElapsed(){
   }
 }
 
-void existsDTMF_module(){
+void moduleDTMF_exists(){
   // DTMF module present?
-  bool dtmfHardwareExists = testDTMF_module("1248D", 50, 50, true, true); // playing just the tones that light each Q bit LED individually, and D to clear them
+  bool dtmfHardwareExists = moduleDTMF_test("1248D", 50, 50, true, true); // playing just the tones that light each Q bit LED individually, and D to clear them
   if(!dtmfHardwareExists && !softwareDTMF) {
     softwareDTMF = true;
     Serial.println("Hardware DTMF module not detected. Auto-switching to software DTMF.");
@@ -113,7 +105,7 @@ void existsDTMF_module(){
 }
 
 // test DTMF module response at given tone and space times
-bool testDTMF_module(String digits, int toneTime, int spaceTime, bool showSend, bool ignoreSHK){
+bool moduleDTMF_test(String digits, int toneTime, int spaceTime, bool showSend, bool ignoreSHK){
   // testing DTMF module by playing tones ourselves and checking pin responses
   // The module may give a read during the space or even overlap into the next digit, so we must 
   // detect reads independently of playing tones and run the loop extra iterations after finished.
@@ -166,7 +158,7 @@ void settingsInit(){
 }
 
 void loop() {
-  if(!connected) connected = wm.process();  // process non-blocking wifi config portal if not yet connected
+  comms.run();                              // process non-blocking WiFi config portal if not yet connected
   modeRun(mode);                            // always run the current mode before modeDetect() because mode can change during modeRun()
   modeDeferCheck();                         // check if deferred mode ready to activate
   deferActionCheckElapsed();                // check if a deferred action is waiting to run
@@ -422,7 +414,7 @@ void configureByNumber(String starcode){
       int floor = (num == 0) ? 0 : (start - num);
       Serial.printf("testing DTMF module speed for maximum %d iterations...\n", start-floor);
       for(int duration = start; duration > floor; duration--)
-        if(!testDTMF_module(digits, duration, duration)) break;
+        if(!moduleDTMF_test(digits, duration, duration)) break;
       return rest();
     }
 
@@ -516,7 +508,7 @@ void terminal(){
         int start = 39;
         Serial.println("testing DTMF module speed until all digits fail...");
         for(int duration = start; duration > 0; duration--)
-          if(!testDTMF_module(digits, duration, duration, false, true)) break;
+          if(!moduleDTMF_test(digits, duration, duration, false, true)) break;
       } else {
         Serial.println("unrecognized command");
         player.playTone(player.err, 2);

@@ -17,9 +17,10 @@ const unsigned long timeout1Max = 1000 * 15;  // how long to wait for user actio
 const unsigned long timeout2Max = 1000 * 40;  // cumulative with timeout1Max; enough time to play message twice and then eventually give up and play howler
 const unsigned long abandonMax = 1000 * 120;  // cumulative with timeout2Max; when to give up on user and stop howler
 
+void splash();
 void settingsInit();
-void existsDTMF_module();
-bool testDTMF_module(String digits, int toneTime, int gapTime, bool showSend = false, bool ignoreSHK = false);
+void moduleDTMF_exists();
+bool moduleDTMF_test(String digits, int toneTime, int gapTime, bool showSend = false, bool ignoreSHK = false);
 bool modeBouncing(modes);
 void modeDefer(modes deferMode, unsigned delay);
 void modeDeferCheck();

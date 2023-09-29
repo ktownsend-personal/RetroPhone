@@ -1,9 +1,5 @@
 /*
-  TODO: add *70 for showing connection status with IP, SSID and RSSI (signal strength)
-  TODO: web server and mechanism to startup in AP mode to configure wifi connection (is there something existing for this?)
   TODO: web server for configuring other app settings
-  TODO: periodically ensure still connected
-  TODO: handle wifi events to manage wifi state
   TODO: set hostname to RetroPhone_867_5309 (need a way to configure the device phone number)
 
   REF: https://randomnerdtutorials.com/esp32-useful-wi-fi-functions-arduino/
@@ -12,10 +8,18 @@
 #include "wifiHandler.h"
 #include "WiFi.h"
 
+WiFiManager wm; // https://github.com/tzapu/WiFiManager
+
 void wifiHandler::init(){
-    WiFi.mode(WIFI_STA);
-    WiFi.disconnect();
-    delay(100);
+  wm.setConfigPortalBlocking(false);
+  wm.setConfigPortalTimeout(60);
+  auto id = String("RetroPhone_") + String(ESP.getEfuseMac());
+  connected = wm.autoConnect(id.c_str());
+  if(!connected) Serial.println("WiFi config portal running for 60 seconds");
+}
+
+void wifiHandler::run(){
+  if(!connected) connected = wm.process();  // process non-blocking wifi config portal if not yet connected
 }
 
 void wifiHandler::showNetworks(){
@@ -43,6 +47,7 @@ String status(){
     case WL_NO_SHIELD:        return "No Shield";
     case WL_NO_SSID_AVAIL:    return "No SSID Available";
     case WL_SCAN_COMPLETED:   return "Scan Completed";
+    default:                  return "Unknown Status";
   }
 }
 
