@@ -24,6 +24,9 @@ auto player  = audioPlayback(region, 0); // core 0 better; core 1 delays mp3 pla
 auto status  = statusHandler<PIN_RGB>(100);
 auto comms   = wifiHandler();
 
+bool onHook() {return !digitalRead(PIN_SHK);}
+bool ringButton() {return digitalRead(PIN_BTN);}
+
 void setup() {
   Serial.begin(115200);
   Serial.println();
@@ -72,14 +75,6 @@ void splash(){
   Serial.println(R"(╰────────────────────────────────────────────────────────────────────────────╯)");
 }
 
-// this will wait (blocking) the number of milliseconds specified, or until user hangs up
-// returns true if user hung up, otherwise false
-bool wait(unsigned int milliseconds){
-  auto until = millis() + milliseconds;
-  while(millis() < until) if(!digitalRead(PIN_SHK)) return true; // we have to check SHK directly because this is a blocking wait and mode won't change
-  return false;
-}
-
 // this will defer an action or abort if mode changes first
 void deferActionUnlessModeChange(unsigned int milliseconds,  void (*action)()){
   deferAction = action;
@@ -100,8 +95,7 @@ void moduleDTMF_exists(){
     softwareDTMF = true;
     Serial.println("Hardware DTMF module not detected. Auto-switching to software DTMF.");
   };
-  // delay a bit to allow DTMF to finish playing so we don't detect as dialing it if user has phone off the hook
-  wait(50);
+  player.await(); // wait for playback to finish so we don't detect as dialing it if user has phone off the hook
 }
 
 // test DTMF module response at given tone and space times
@@ -123,7 +117,7 @@ bool moduleDTMF_test(String digits, int toneTime, int spaceTime, bool showSend, 
       byte tone = 0x00 | (digitalRead(PIN_Q1) << 0) | (digitalRead(PIN_Q2) << 1) | (digitalRead(PIN_Q3) << 2) | (digitalRead(PIN_Q4) << 3);
       reads += dtmfmod.tone2char(tone);
     }
-    if(!ignoreSHK && !digitalRead(PIN_SHK)) return false; // abort if user hangs up
+    if(!ignoreSHK && onHook()) return false; // abort if user hangs up
   }
   int unread = digits.length() - reads.length();
   int misread = 0;
@@ -193,20 +187,17 @@ void modeDeferCheck() {
 }
 
 modes modeDetect() {
-  int SHK = digitalRead(PIN_SHK);
-  int BTN = digitalRead(PIN_BTN);
-
   //NOTE: every case must have a break to prevent fallthrough if return conditions not met
   switch(mode) {
     case call_idle:
-      if(SHK) return call_ready;
-      if(BTN) return call_incoming;
+      if(!onHook())     return call_ready;
+      if(ringButton())  return call_incoming;
       break;
     case call_incoming:
-      if(SHK) return call_connected;
+      if(!onHook())     return call_connected;
       break;
     default:
-      if(!SHK) return call_idle;
+      if(onHook())      return call_idle;
       break;
   }
   return mode; // if we get here the mode didn't change
@@ -225,8 +216,8 @@ void modeStop(modes oldmode, bool keepPlaybackAlive) {
 void modeStart(modes newmode, modes oldmode) {
   Serial.printf("> %s...", modeNames[newmode].c_str());
 
-  digitalWrite(PIN_LED, digitalRead(PIN_SHK)); // basic off-hook status
-  status.show(newmode);                        // addressable LED for mode status
+  digitalWrite(PIN_LED, !onHook()); // basic off-hook status
+  status.show(newmode);             // addressable LED for mode status
 
   switch(newmode){
     case call_ready:
@@ -521,13 +512,12 @@ void terminal(){
 }
 
 bool testMp3slice(String starcode){
-  //NOTE: managing the success tone and mode switch directly so we can get the timing right
 
   auto sliceit = [](sliceConfig slice)-> bool {
     Serial.printf("testing MP3 slice [%s]...", slice.label.c_str());
     player.queueSlice(slice);
     player.play();
-    wait(slice.samplesToPlay/44.1 + 500); // attempting to delay exactly the right amount of time before switching mode, but abort if user hangs up
+    player.await(onHook);
     return true;
   };
 
@@ -571,22 +561,23 @@ bool testMp3slice(String starcode){
 }
 
 bool testMp3file(String starcode){
-  //NOTE: managing the success tone and mode switch directly so we can get the timing right
-  auto play = [](String filepath, unsigned milliseconds)-> bool {
+
+  auto play = [](String filepath)-> bool {
     Serial.printf("testing MP3 playback [%s]...", filepath.c_str());
     player.playMP3(filepath);
-    wait(milliseconds + 800); // attempting to delay exactly the right amount of time before switching mode, but abort if user hangs up
+    player.await(onHook);
     return true;
   };
+
   switch(starcode[2]){
-    case '1': return play("/fs/circuits-xxx-anna.mp3",        7706);
-    case '2': return play("/fs/complete2-bell-f1.mp3",        8856);
-    case '3': return play("/fs/discoornis-bell-f1.mp3",       10109);
-    case '4': return play("/fs/timeout-bell-f1.mp3",          7367);
-    case '5': return play("/fs/svcoroption-xxx-anna.mp3",     12434);
-    case '6': return play("/fs/anna-1DSS-default-vocab.mp3",  26776);
-    case '7': return play("/fs/feature5-xxx-anna.mp3",        1881);
-    case '8': return play("/fs/feature6-xxx-anna.mp3",        1802);
+    case '1': return play("/fs/circuits-xxx-anna.mp3");
+    case '2': return play("/fs/complete2-bell-f1.mp3");
+    case '3': return play("/fs/discoornis-bell-f1.mp3");
+    case '4': return play("/fs/timeout-bell-f1.mp3");
+    case '5': return play("/fs/svcoroption-xxx-anna.mp3");
+    case '6': return play("/fs/anna-1DSS-default-vocab.mp3");
+    case '7': return play("/fs/feature5-xxx-anna.mp3");
+    case '8': return play("/fs/feature6-xxx-anna.mp3");
     default: return false;
   }
 }

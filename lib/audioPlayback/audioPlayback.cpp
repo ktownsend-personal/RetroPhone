@@ -92,7 +92,9 @@ void audioPlayback::play(byte iterations, unsigned gapMS, bool showDebug){
     queue.defs[i] = def;
     if(showDebug) {
       Serial.printf("\n\tdefs[%d]: ", i);
-      if(def.repeatTimes != 1) {
+      if(def.callback != NULL) {
+        Serial.print("callback");
+      } else if(def.repeatTimes != 1) {
         auto times = def.repeatTimes == 0 ? String("forever") : String(def.repeatTimes) + String(" times");
         Serial.printf("repeat{idx:%d,%s}", def.repeatIndex, times.c_str());
       } else if (def.filepath != "") {
@@ -108,6 +110,15 @@ void audioPlayback::play(byte iterations, unsigned gapMS, bool showDebug){
   pq->arraySize = 0; // reset source queue for next sequence config
 
   xTaskCreatePinnedToCore(playback_task, "playback", 32768, &queue, 1, &x_handle, core);
+}
+
+// wait until current playback is finished
+void audioPlayback::await(bool (*cancelIf)()){
+  // wait until task stops
+  while(x_handle != NULL){
+    if(cancelIf != NULL && cancelIf()) break;
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
 }
 
 // gracefully notifies the active audio generation task to stop and cleanup
@@ -141,10 +152,17 @@ void audioPlayback::queueTone(unsigned toneTime, unsigned short freq1, unsigned 
 
 // add mp3 file
 void audioPlayback::queueMP3(String filepath, byte iterations, unsigned gapMS){
+
+  auto repeatIndex = pq->arraySize;           // if we have 0 or > 1 iterations we need to add a repeat segment after adding the tone segments
+
   auto def = playbackDef{NULL, 0, 0, 0, 0, 0, filepath, 0, 0, 0, 1};
   queuePlaybackDef(def);
-  queueGap(gapMS);
-  queuePlaybackDef(def);
+
+  if(iterations != 1) {
+    if(gapMS > 0) queueGap(gapMS);
+    auto def = playbackDef{NULL, 0, 0, 0, 0, 0, "", 0, 0, repeatIndex, iterations};
+    queuePlaybackDef(def);
+  }
 }
 
 // add mp3 slice

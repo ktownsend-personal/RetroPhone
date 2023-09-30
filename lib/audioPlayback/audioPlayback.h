@@ -76,6 +76,7 @@ class audioPlayback
     void playDTMF(String digits, unsigned toneTime = 40, unsigned spaceTime = 40);
 
     void play(byte iterations = 1, unsigned gapMS = 0, bool showDebug = false);
+    void await(bool (*cancelIf)() = NULL);
     void stop();
 
   private:
