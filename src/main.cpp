@@ -12,6 +12,7 @@
 #include "audioSlices.h"
 #include "statusHandler.h"
 #include "wifiHandler.h"
+// #include "streamTest.h"
 
 String digits; // this is where we accumulate dialed digits
 auto region  = RegionConfig(region_northAmerica);
@@ -23,6 +24,7 @@ auto dtmfmod = dtmfModule(PIN_Q1, PIN_Q2, PIN_Q3, PIN_Q4, PIN_STQ, dialingStarte
 auto player  = audioPlayback(region, 0); // core 0 better; core 1 delays mp3 playback start too much when splicing and requires larger tone chunk size to avoid underflowing buffer (the main loop is on core 1, wifi & bluetooth are core 0)
 auto status  = statusHandler<PIN_RGB>(100);
 auto comms   = wifiHandler();
+// auto stream  = streamTest();
 
 bool onHook() {return !digitalRead(PIN_SHK);}
 bool ringButton() {return digitalRead(PIN_BTN);}
@@ -31,9 +33,12 @@ void setup() {
   Serial.begin(115200);
   Serial.println();
 
-  pinMode(PIN_LED, OUTPUT);
-  pinMode(PIN_BTN, INPUT_PULLDOWN);
-  pinMode(PIN_SHK, INPUT_PULLUP);
+  pinMode(PIN_MUTE, OUTPUT);
+  pinMode(PIN_LED,  OUTPUT);
+  pinMode(PIN_BTN,  INPUT_PULLDOWN);
+  pinMode(PIN_SHK,  INPUT_PULLUP);
+
+  inputMuting(true); // start muted
 
   splash();
   settingsInit();
@@ -48,6 +53,9 @@ void setup() {
   dtmfmod.setDigitCallback(digitReceivedCallback);
   comms.init();           // WIFI auto-connect & config portal
   Serial.println();
+
+  // stream.init();
+  // player.setStreamCallback([](short* sBuffer, size_t bytesIn)->void{stream.sendAudio(sBuffer, bytesIn);});
 
   modeStart(mode, mode);  // activate initial call progress mode
 }
@@ -208,8 +216,11 @@ void modeStop(modes oldmode, bool keepPlaybackAlive) {
   deferModeUntil = 0;   // cancel scheduled mode change
   deferActionUntil = 0; // cancel scheduled action
   switch(oldmode){
-    case call_incoming: return ringer.stop();
-    default:            return keepPlaybackAlive ? void() : player.stop();
+    case call_incoming: 
+      return ringer.stop();
+    default:
+      inputMuting(true);
+      return keepPlaybackAlive ? void() : player.stop();
   }
 }
 
@@ -223,6 +234,7 @@ void modeStart(modes newmode, modes oldmode) {
     case call_ready:
       digits = "";
       timeoutStart();
+      inputMuting(false); // need to hear DTMF tones from SLIC
       pulser.start();
       player.playTone(player.dialtone);
       return (softwareDTMF) ? dtmfer.start() : dtmfmod.start();
@@ -244,7 +256,9 @@ void modeStart(modes newmode, modes oldmode) {
       return;
     case call_incoming:       return ringer.start(region.ringer.freq, region.ringer.cadence);
     case call_pulse_dialing:  return timeoutStart();
-    case call_tone_dialing:   return timeoutStart();
+    case call_tone_dialing:   
+      inputMuting(false); // need to hear DTMF tones from SLIC
+      return timeoutStart();
     case call_ringing:        return player.playTone(player.ringback);
     case call_busy:           return player.playTone(player.busytone);
     case call_fail:           return playCallFailed();
@@ -582,3 +596,6 @@ bool testMp3file(String starcode){
   }
 }
 
+void inputMuting(bool muted){
+  digitalWrite(PIN_MUTE, !muted); // TODO: remove the "not" if I have this backwards based on high vs. low mute signal
+}

@@ -36,3 +36,4 @@ void playTimeoutMessage(String mp3);
 void terminal();
 bool testMp3slice(String starcode);
 bool testMp3file(String starcode);
+void inputMuting(bool muted);

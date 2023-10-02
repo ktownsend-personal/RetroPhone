@@ -1,6 +1,7 @@
 #ifndef main_config_h
 #define main_config_h
 
+#define PIN_MUTE     19     // mute audio input to avoid receiving dialing clicks from SLIC
 #define PIN_LED      2      // using onboard LED for basic off-hook status
 #define PIN_RGB      21     // addressable RGB for call progress mode status
 #define PIN_BTN      12     // external button to initiate ringing
