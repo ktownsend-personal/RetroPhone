@@ -29,7 +29,7 @@ flowchart LR
 ```
 ```mermaid
 flowchart LR
-  subgraph Backplane
+  subgraph Backplane Audio Matrix
     direction LR
     Phone1((phone)) -.-|line| SLIM1[SLIM] <==>|header| SLAT1([SLAT]) <==>|header| SLAB
     Phone2((phone)) -.-|line| SLIM2[SLIM] <==>|header| SLAT2([SLAT]) <==>|header| SLAB
@@ -37,5 +37,16 @@ flowchart LR
     SLAP[/SLAP/] <==>|header| SLAB[[SLAB]]
     SLAM2{{SLAM\nLocation 2}} -..-|remote trunk line| SLAM1{{SLAM}} <==>|header| SLAB
     SLAM3{{SLAM\nLocation 3}} -..-|remote trunk line| SLAM1
+  end
+```
+```mermaid
+flowchart LR
+  subgraph Standalone Audio Matrix
+    direction LR
+      SLIM1[SLIM] <==>|header| SLIP1[/SLIP/] <==>|header| SLAT1([SLAT]) -.-|wire| SLAM
+      SLIM2[SLIM] <==>|header| SLIP2[/SLIP/] <==>|header| SLAT2([SLAT]) -.-|wire| SLAM
+      SLIM3[SLIM] <==>|header| SLIP3[/SLIP/] <==>|header| SLAT3([SLAT]) -.-|wire| SLAM
+      SLIP4[/SLIP/] <==> SLAM{{SLAM}}
+      SLAM -.-|remote trunk line| SLAM2{{SLAM\nLocation 2}}
   end
 ```
