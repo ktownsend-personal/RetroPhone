@@ -73,3 +73,30 @@ flowchart LR
     SLAM3{{SLAM\nLocation 3}} -..-|remote trunk line| SLAM1
   end
 ```
+
+###Header Signals
+|Signal|Comment|
+|---|---|
+|GND|multiple pins for extra current?|
+|3.3V|multiple pins for extra current?|
+|5V|multiple pins for extra current?|
+|-5V|multiple pins for extra current?|
+|A1+|
+|A1-|omit if grounded audio works with matrix chip|
+|A2+|
+|A2-|omit if grounded audio works with matrix chip|
+|A3+|
+|A3-|omit if grounded audio works with matrix chip|
+|A4+|
+|A4-|omit if grounded audio works with matrix chip|
+|A5+|
+|A5-|omit if grounded audio works with matrix chip|
+|A6+|
+|A6-|omit if grounded audio works with matrix chip|
+|A7+|
+|A7-|omit if grounded audio works with matrix chip|
+|A8+|
+|A8-|omit if grounded audio works with matrix chip|
+|I2C SDA|ideally multi-master mode to avoid polling SLIMs|
+|I2C SCL|ideally multi-master mode to avoid polling SLIMs|
+>Front panel display for backplane assembly possible with I2C bus
