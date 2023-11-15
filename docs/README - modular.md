@@ -33,7 +33,9 @@ flowchart LR
     direction LR
     Phone1((phone)) -.-|line| SLIM1[SLIM] <==>|header| SLAT1([SLAT]) <==>|header| SLAB
     Phone2((phone)) -.-|line| SLIM2[SLIM] <==>|header| SLAT2([SLAT]) <==>|header| SLAB
-    SLAM2{{SLAM}} -..-|remote trunk line| SLAM1{{SLAM}} <==>|header| SLAB
+    Phone3((phone)) -.-|line| SLIM3[SLIM] <==>|header| SLAT3([SLAT]) <==>|header| SLAB
     SLAP[/SLAP/] <==>|header| SLAB[[SLAB]]
+    SLAM2{{SLAM\nLocation 2}} -..-|remote trunk line| SLAM1{{SLAM}} <==>|header| SLAB
+    SLAM3{{SLAM\nLocation 3}} -..-|remote trunk line| SLAM1
   end
 ```
