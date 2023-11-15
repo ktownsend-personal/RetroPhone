@@ -1,4 +1,4 @@
-# module idea
+# module ideas
 
 |Acronym|Term|Headers|Description|
 |---|---|---|---|
@@ -74,7 +74,7 @@ flowchart LR
   end
 ```
 
-###Common Header
+### Common Header
 |Signal|Source|Sink|Comment|
 |---|---|---|---|
 |GND|SLIP/SLAP|Any|multiple pins for extra current?|
@@ -89,7 +89,7 @@ flowchart LR
 |Audio+|SLAT|SLAM|bidirectional audio trunk signal|
 |Audio-|SLAT|SLAM|omit if grounded audio works with matrix chip|
 
-###SLAM Header Extension
+### SLAM Header Extension
 |Signal|Comment|
 |---|---|
 |A1+|from SLIM slot 1|
