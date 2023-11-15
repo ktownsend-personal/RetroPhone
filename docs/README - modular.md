@@ -74,29 +74,38 @@ flowchart LR
   end
 ```
 
-###Header Signals
+###Common Header
+|Signal|Source|Sink|Comment|
+|---|---|---|---|
+|GND|SLIP/SLAP|Any|multiple pins for extra current?|
+|3.3V|SLIP/SLAP|Any|multiple pins for extra current?|
+|5V|SLIP/SLAP|Any|multiple pins for extra current?|
+|-5V|SLIP/SLAP|Any|multiple pins for extra current?|
+|I2C SDA|Any|Any|I2C multi-master mode|
+|I2C SCL|Any|Any|I2C multi-master mode|
+|Tip|SLIM|SLAT|phone loop|
+|Ring|SLIM|SLAT|phone loop|
+|Audio Relay|SLIM|SLAT|connect Tip/Ring to Audio +/-|
+|Audio+|SLAT|SLAM|bidirectional audio trunk signal|
+|Audio-|SLAT|SLAM|omit if grounded audio works with matrix chip|
+
+###SLAM Header Extension
 |Signal|Comment|
 |---|---|
-|GND|multiple pins for extra current?|
-|3.3V|multiple pins for extra current?|
-|5V|multiple pins for extra current?|
-|-5V|multiple pins for extra current?|
-|A1+|
+|A1+|from SLIM slot 1|
 |A1-|omit if grounded audio works with matrix chip|
-|A2+|
+|A2+|from SLIM slot 2|
 |A2-|omit if grounded audio works with matrix chip|
-|A3+|
+|A3+|from SLIM slot 3|
 |A3-|omit if grounded audio works with matrix chip|
-|A4+|
+|A4+|from SLIM slot 4|
 |A4-|omit if grounded audio works with matrix chip|
-|A5+|
+|A5+|from SLIM slot 5|
 |A5-|omit if grounded audio works with matrix chip|
-|A6+|
+|A6+|from SLIM slot 6|
 |A6-|omit if grounded audio works with matrix chip|
-|A7+|
+|A7+|from SLIM slot 7|
 |A7-|omit if grounded audio works with matrix chip|
-|A8+|
+|A8+|from SLIM slot 8|
 |A8-|omit if grounded audio works with matrix chip|
-|I2C SDA|ideally multi-master mode to avoid polling SLIMs|
-|I2C SCL|ideally multi-master mode to avoid polling SLIMs|
 >Front panel display for backplane assembly possible with I2C bus
