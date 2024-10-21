@@ -80,7 +80,7 @@ There is a lot of info in this README, but also some useful stuff in the [docs f
   * GadgetReboot noticed it bounces longer when powered 3.3V vs. 5V
 * RM and FR pins on the SLIC are both necessary for ringing. The RM pin sets the higher ringing voltage, and the FR pin flip flops the polarity on high and low cycles. Both are definitely needed, although the electronic ringer on my Sony slimline works fine with just FR toggled, the physical bell on the Snoopy phone requires the RM to have enough power to physically move the armature. 
 
-* The [missing fundamental](https://blogs.scientificamerican.com/roots-of-unity/your-telephone-is-lying-to-you-about-sounds/) phenomenon is really interesting. Although phones only use frequencies 300Hz to 3400Hz, we actually hear lower tones due to this phenomenon.
+* The [missing fundamental](https://blogs.scientificamerican.com/roots-of-unity/your-telephone-is-lying-to-you-about-sounds/) phenomenon is really interesting. Although phones only use frequencies [~~300Hz to 3400Hz~~ 150 to 3750 Hz](https://github.com/ktownsend-personal/RetroPhone/issues/4), we actually hear lower tones due to this phenomenon.
 
 ## Thoughts
 * would interrupts be useful in this project so we can put the device to sleep when idle, but still wake up for incoming wifi call or off-hook pin?
